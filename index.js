@@ -8,12 +8,12 @@ const pgp = require("pg-promise")();
 const path = require('path');
 
 const pool = new Pool({
-  user: "postgres",
-  host: "localhost",
-  database: "AMS",
-  password: "8292",
-  port: 5432,
-});
+    user: process.env.PGUSER,
+    host: process.env.PGHOST,
+    database: process.env.PGDATABASE,
+    password: process.env.PGPASSWORD,
+    port: process.env.PGPORT,
+  });
 
 app.set('views', path.join(__dirname, 'views'));
 app.set("view engine", "pug");
@@ -29,34 +29,32 @@ app.use(
 );
 
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use('/login', (req, res) => {
-    res.render('login');
-  });
-// app.get("/", (req, res) => {
-//   user = req.session.user;
+
+app.get("/", (req, res) => {
+  user = req.session.user;
   
-//   if (user) {
-//     res.redirect('/')
+  if (user) {
+    res.redirect('/')
     
-//     if ((user.role.toLowerCase().trim() === "web developer")||(user.role.toLowerCase().trim() === "Content Writer")) {
-//       req.session.user = user;
-//       let userId = user.id;
+    if ((user.role.toLowerCase().trim() === "web developer")||(user.role.toLowerCase().trim() === "Content Writer")) {
+      req.session.user = user;
+      let userId = user.id;
       
 
-//       res.render("dashboard", { user: user });
-//     } else if (user.role.toLowerCase().trim() === "Content Writer") {
-//       req.session.user = user;
-//       res.render("dashboard", { user: user });
-//     } else if (user.role.toLowerCase().trim() === "audit") {
-//       req.session.user = user;
-//       res.render("audit_dashboard", { user: user });
-//     } else {
-//       res.redirect("signup");
-//     }
-//   } else {
-//     res.render("login");
-//   }
-// });
+      res.render("dashboard", { user: user });
+    } else if (user.role.toLowerCase().trim() === "Content Writer") {
+      req.session.user = user;
+      res.render("dashboard", { user: user });
+    } else if (user.role.toLowerCase().trim() === "audit") {
+      req.session.user = user;
+      res.render("audit_dashboard", { user: user });
+    } else {
+      res.redirect("signup");
+    }
+  } else {
+    res.render("login");
+  }
+});
 
 
 app.post("/loginAction", async (req, res) => {
