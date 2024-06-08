@@ -29,7 +29,7 @@ app.use(
 );
 
 app.use(bodyParser.urlencoded({ extended: true }));
-app.get('/login', (req, res) => {
+app.use('/login', (req, res) => {
     res.render('login');
   });
 // app.get("/", (req, res) => {
