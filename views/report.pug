@@ -1,0 +1,17 @@
+html
+  head
+    title Dashboard
+    link(rel='stylesheet', href='/style.css')
+  body
+    include header1.pug
+    h2.center.scaps Attendance Report
+    br
+    form(method='post' action='/report' class='')
+      label(for='name') Name:
+      input(type='text', name='name', required=true)
+      label(for='year') Year:
+      input(type='number', name='year', min='1', required=true)
+      label(for='month') Month:
+      input(type='number', name='month', min='1', required=true)
+      p.gorg
+        button(type='submit' class="button") Submit

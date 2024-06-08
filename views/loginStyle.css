@@ -1,0 +1,23 @@
+@import url(https://fonts.googleapis.com/css?family=Roboto:400,300,500);
+body{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.loginform{
+  background-color: white;
+  padding: 3% 5%;
+  text-align: center;
+}
+
+input{
+  margin-bottom: 4%;
+  background-color: transparent;
+  border: none;
+  border-bottom: 2px solid black;
+}
+
+button{
+  padding: 1px 15px;
+  background-color: 687EFF;
+}

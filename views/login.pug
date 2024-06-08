@@ -1,0 +1,17 @@
+html
+  head
+    title= title
+    //- link(rel='stylesheet', href='https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css')
+    link(rel="stylesheet", href='/style.css')
+    link(rel="stylesheet", href='/loginStyle.css')
+  body
+    form(role='form' method='POST' action='/loginAction' class="loginform")
+      h1 Log In
+      if (error)
+        p #{error}
+      input(type="email", name="email", id="email", required, placeholder="Enter your email")
+      br
+
+      input(type="password", name="password", id="password", required, placeholder="Enter your password")
+      br
+      button(type="submit" class="button") Login

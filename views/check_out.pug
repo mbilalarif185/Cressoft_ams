@@ -1,0 +1,32 @@
+html
+  head
+    title Dashboard
+    link(rel='stylesheet', href='/style.css')
+  body
+    include header1.pug
+    h2.center.scaps Check Out 
+    br
+    form(method='post' action='/check_out' class='')
+      label(for='name') Name:
+      input(type='text', name='name', required=true, value=userName, readonly)
+      label(for='time') Time:
+      input(type='time', name='time', id='time', required=true, readonly)
+      label(for='date') Date:
+      input(type='date', name='date', id='date', required=true,)
+      label(for='reason') Reason:
+      input(type='text', name='reason', id='reason', required=true,)
+      p.gorg
+        button(type='submit' class="button") Submit
+
+    script.
+      // JavaScript code to set current time to the time input field
+      const timeInput = document.getElementById('time');
+      const dateInput = document.getElementById('date');
+
+      // Set the default value of timeInput to the current time
+      const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false });
+      timeInput.value = currentTime;
+
+      // Set the default value of dateInput to the current date
+      const currentDate = new Date().toISOString().split('T')[0];
+      dateInput.value = currentDate;

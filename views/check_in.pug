@@ -1,0 +1,42 @@
+html
+  head
+    title Dashboard
+    link(rel='stylesheet', href='/style.css')
+  body
+    include header1.pug
+    h2.center.scaps Check IN
+    br
+    form(method='post' action='/check_in' class='')
+      label(for='name') Name:
+      input(type='text', name='name', required=true, value=userName, readonly)
+      label(for='time') Time:
+      input(type='time', name='time', id='time', required=true, readonly)
+      label(for='date') Date:
+      input(type='date', name='date', id='date', required=true, readonly)
+      label(for='location') Location:
+      input(type='text', name='location', id='location', required=true, readonly)
+      p.gorg
+        button(type='submit' class="button") Submit
+
+    script.
+      const timeInput = document.getElementById('time');
+      const dateInput = document.getElementById('date');
+      const locationInput = document.getElementById('location');
+
+      const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false });
+      timeInput.value = currentTime;
+
+      const currentDate = new Date().toISOString().split('T')[0];
+      dateInput.value = currentDate;
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(position => {
+          const { latitude, longitude } = position.coords;
+          locationInput.value = `Lat: ${latitude}, Lon: ${longitude}`;
+        }, error => {
+          locationInput.value = 'Location not available';
+          console.error(error);
+        });
+      } else {
+        locationInput.value = 'Geolocation is not supported by this browser';
+      }

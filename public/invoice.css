@@ -1,0 +1,91 @@
+body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+    
+  }
+  .table-bordered {
+    border-collapse: collapse;
+    width: 100%; /* Adjust table width as needed */
+  }
+  
+  .table-bordered th,
+  .table-bordered td {
+    border: 1px solid #ddd; /* Adjust border color as needed */
+    padding: 8px; /* Adjust cell padding as needed */
+  }
+  
+  .table-bordered th {
+    background-color: #f2f2f2; /* Adjust header background color as needed */
+  }
+  
+  .container {
+    max-width: 800px;
+    margin: 20px auto;
+    background-color: #fff;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    page-break-inside: avoid;
+  }
+  
+  h3 {
+    text-align: center;
+  }
+  h4 {
+    text-align: center;
+  }
+  .invoice-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  
+  .left-section,
+  .right-section {
+    width: 48%;
+  }
+  
+  .price-section {
+    text-align: right;
+  }
+  
+  .price-label,
+  .gst-label,
+  .total-label {
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+  
+  .price-value,
+  .gst-value,
+  .total-value {
+    margin-bottom: 10px;
+  }
+  
+  .button-container {
+    text-align: center;
+    margin-top: 20px;
+  }
+  
+  #downloadBtn {
+    background-color: #3498db;
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .transaction-details,
+  .Person-details,
+  .recipient-info,
+  .payment-info{
+    
+    page-break-inside: avoid;
+  }
+
+  .right-section{
+    text-align: ;
+  }
+  
