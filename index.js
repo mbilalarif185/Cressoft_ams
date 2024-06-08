@@ -3,7 +3,7 @@ const bodyParser = require("body-parser");
 const { Pool } = require("pg");
 const session = require("express-session");
 const app = express();
-const PORT = 3000;
+const PORT = 9000;
 const pgp = require("pg-promise")();
 
 const pool = new Pool({
