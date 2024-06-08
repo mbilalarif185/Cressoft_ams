@@ -1,7 +1,7 @@
 import express from "express";
 const app=express();
 const port = 9000;
-app.use('/',()=>{
+app.use('/',(req,res)=>{
     res.json({message:" Hey I am deploying it on Vercel"})
 })
 app.listen(9000,()=>{
