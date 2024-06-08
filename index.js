@@ -28,32 +28,34 @@ app.use(
 );
 
 app.use(bodyParser.urlencoded({ extended: true }));
-
-app.get("/", (req, res) => {
-  user = req.session.user;
+app.get('/login', (req, res) => {
+    res.render('login');
+  });
+// app.get("/", (req, res) => {
+//   user = req.session.user;
   
-  if (user) {
-    res.redirect('/')
+//   if (user) {
+//     res.redirect('/')
     
-    if ((user.role.toLowerCase().trim() === "web developer")||(user.role.toLowerCase().trim() === "Content Writer")) {
-      req.session.user = user;
-      let userId = user.id;
+//     if ((user.role.toLowerCase().trim() === "web developer")||(user.role.toLowerCase().trim() === "Content Writer")) {
+//       req.session.user = user;
+//       let userId = user.id;
       
 
-      res.render("dashboard", { user: user });
-    } else if (user.role.toLowerCase().trim() === "Content Writer") {
-      req.session.user = user;
-      res.render("dashboard", { user: user });
-    } else if (user.role.toLowerCase().trim() === "audit") {
-      req.session.user = user;
-      res.render("audit_dashboard", { user: user });
-    } else {
-      res.redirect("signup");
-    }
-  } else {
-    res.render("login");
-  }
-});
+//       res.render("dashboard", { user: user });
+//     } else if (user.role.toLowerCase().trim() === "Content Writer") {
+//       req.session.user = user;
+//       res.render("dashboard", { user: user });
+//     } else if (user.role.toLowerCase().trim() === "audit") {
+//       req.session.user = user;
+//       res.render("audit_dashboard", { user: user });
+//     } else {
+//       res.redirect("signup");
+//     }
+//   } else {
+//     res.render("login");
+//   }
+// });
 
 
 app.post("/loginAction", async (req, res) => {
