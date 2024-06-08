@@ -14,7 +14,7 @@ const pool = new Pool({
   port: 5432,
 });
 
-app.set("view engine", "views");
+app.set("view engine", "pug");
 app.use(express.static("public"));
 app.use("/static", express.static("static"));
 app.use(bodyParser.urlencoded({ extended: true }));
