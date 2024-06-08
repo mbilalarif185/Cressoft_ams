@@ -18,7 +18,7 @@ const pool = new Pool({
 app.set('views', path.join(__dirname, 'views'));
 app.set("view engine", "pug");
 app.use(express.static("public"));
-app.use("/static", express.static("static"));
+app.use("/static", path.join(__dirname, express.static("static")));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(
   session({
