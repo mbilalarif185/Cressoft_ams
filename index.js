@@ -5,6 +5,7 @@ const session = require("express-session");
 const app = express();
 const PORT = 9000;
 const pgp = require("pg-promise")();
+const path = require('path');
 
 const pool = new Pool({
   user: "postgres",
