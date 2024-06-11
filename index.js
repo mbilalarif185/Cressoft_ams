@@ -6,20 +6,10 @@ const app = express();
 const PORT = 9000;
 const pgp = require("pg-promise")();
 const path = require('path');
-require('dotenv').config();
 
-
-// const pool = new Pool({
-//   connectionString: "postgres://default:dBvs9WmVElG4@ep-ancient-paper-a4q1fof7-pooler.us-east-1.aws.neon.tech:5432/verceldb?sslmode=require?sslmode=require",
-  
-// })
 const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASS,
-  port: process.env.DB_PORT,
-});
+  connectionString: "postgres://default:Sd9k5QPpcCXK@ep-crimson-bar-a4b1xjdd-pooler.us-east-1.aws.neon.tech:5432/verceldb?sslmode=require?sslmode=require",
+})
 
 app.set('views', path.join(__dirname, 'views'));
 app.set("view engine", "pug");
