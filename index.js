@@ -8,12 +8,8 @@ const pgp = require("pg-promise")();
 const path = require('path');
 
 const pool = new Pool({
-    user: process.env.PGUSER,
-    host: process.env.PGHOST,
-    database: process.env.PGDATABASE,
-    password: process.env.PGPASSWORD,
-    port: process.env.PGPORT,
-  });
+  connectionString: "postgres://default:dBvs9WmVElG4@ep-ancient-paper-a4q1fof7-pooler.us-east-1.aws.neon.tech:5432/verceldb?sslmode=require?sslmode=require",
+})
 
 app.set('views', path.join(__dirname, 'views'));
 app.set("view engine", "pug");
@@ -71,7 +67,7 @@ app.post("/loginAction", async (req, res) => {
     if (user) {
       req.session.userId = user.id;
       console.log(user.id)
-      if (user.role.toLowerCase().trim() === "web developer") {
+      if (user.role.toLowerCase().trim() === "developer") {
         req.session.user = user;
         let userId = user.id;
 
