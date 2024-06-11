@@ -20,6 +20,7 @@ const pool = new Pool({
   password: process.env.DB_PASS,
   port: process.env.DB_PORT,
 });
+
 app.set('views', path.join(__dirname, 'views'));
 app.set("view engine", "pug");
 app.use(express.static(path.join(__dirname, 'public')));
