@@ -1,0 +1,19 @@
+html
+  head
+    title Add Employee
+    link(rel='stylesheet', href='/style.css')
+  body
+    include header1.pug
+    h2.center.scaps Dear Admin Add Employee's Details
+    br
+    form(method='post' action='/add_employee')
+      label(for='name') Name:
+      input(type='text', name='name', required=true)
+      label(for='role') Designation:
+      input(type='text', name='role', id='role', required=true)
+      label(for='email') Email
+      input(type='email', name='email', id='email', required=true)
+      label(for='password') Password:
+      input(type='password', name='password', id='password', required=true)
+      p.gorg
+        button(type='submit' class="button") Submit

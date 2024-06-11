@@ -177,6 +177,45 @@ app.post('/check_out', async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
+////Add Employee
+app.get("/add_employee", async (req, res) => {
+  user = req.session.user;
+  console.log("User is:",user)
+  if (user) {
+    res.render("add_employee");
+  } else {
+    res.redirect("/");
+  }
+});
+
+app.post('/add_employee', async (req, res) => {
+  user = req.session.user;
+  console.log(user)
+  // console.log(user.id)
+  // console.log(user.email)
+  //console.log("POst")
+  let login_id = 0;
+  login_id = user.id;
+  const {name,role, email,password } = req.body;
+  
+  try {
+    const insertQuery =
+      "INSERT INTO login(name,role,password,email) VALUES ($1, $2, $3, $4)";
+    const insertValues = [
+      name,
+      role,
+      password,
+      email,
+    ];
+
+    await pool.query(insertQuery, insertValues);
+    res.render("admin_dashboard");
+  } catch (error) {
+    console.error("Error executing query", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
 
 app.get("/report", async (req, res) => {
   user = req.session.user;
