@@ -33,7 +33,7 @@ app.use(
 );
 
 app.get('/', (req, res) => {
-  res.render('index', { title: 'Home' });
+  res.render('login', { title: 'Home' });
 });
 
 app.post("/loginAction", async (req, res) => {
