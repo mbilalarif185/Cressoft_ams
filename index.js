@@ -8,7 +8,7 @@ const pgp = require("pg-promise")();
 const path = require('path');
 
 const pool = new Pool({
-  connectionString: "postgres://default:Sd9k5QPpcCXK@ep-crimson-bar-a4b1xjdd-pooler.us-east-1.aws.neon.tech:5432/verceldb?sslmode=require?sslmode=require",
+  connectionString: "postgres://default:Sd9k5QPpcCXK@ep-crimson-bar-a4b1xjdd-pooler.us-east-1.aws.neon.tech:5432/verceldb?sslmode=require",
 })
 
 app.set('views', path.join(__dirname, 'views'));
