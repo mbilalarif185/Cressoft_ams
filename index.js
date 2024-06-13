@@ -117,36 +117,30 @@ app.get('/', (req, res) => {
 // });
 
 app.post("/loginAction", async (req, res) => {
-  //console.log(req.body)
   const { email, password } = req.body;
   const query = "SELECT * FROM login WHERE email = $1 AND password = $2";
   const values = [email, password];
-  //console.log(values)
+
   try {
     const result = await pool.query(query, values);
     const user = result.rows[0];
 
     if (user) {
       req.session.userId = user.id;
-      console.log(user.id)
-      if (user.role.toLowerCase().trim() === "developer") {
-        req.session.user = user;
-        let userId = user.id;
+      req.session.user = user;
+      console.log(user.id);
 
+      if (user.role.toLowerCase().trim() === "developer") {
         res.render("admin_dashboard", { user: user });
-      } else if (user.role.toLowerCase().trim() === "content writer") {
-        req.session.user = user;
-        res.render("dashboard", { user: user });
-      } else if (user.role.toLowerCase().trim() === "ai") {
-        req.session.user = user;
+      } else if (user.role.toLowerCase().trim() === "content writer" || user.role.toLowerCase().trim() === "ai") {
         res.render("dashboard", { user: user });
       } else {
         res.redirect("signup");
       }
     } else {
       res.render("login", {
-      error: "Login Credentials are wrong.",
-    });
+        error: "Login Credentials are wrong.",
+      });
     }
   } catch (error) {
     console.error("Error executing query", error);
@@ -402,14 +396,20 @@ app.get("/check_in", async (req, res) => {
     res.redirect("/");
   }
 });
+
 app.post('/check_in', async (req, res) => {
   const { name, date, location, time } = req.body;
   const user = req.session.user;
-  const loginId = user.id;
+  const loginId = user ? user.id : null;  // Ensure user is defined
   const type = 'IN';
   const reason = ''; // Set a reason if needed
 
   try {
+    if (!loginId) {
+      res.status(400).send("User not logged in.");
+      return;
+    }
+
     // Check if the user has any unchecked-out record for the given date
     const checkQuery = `
       SELECT id FROM record
@@ -419,6 +419,7 @@ app.post('/check_in', async (req, res) => {
     const checkValues = [name, date, loginId];
 
     const checkResult = await pool.query(checkQuery, checkValues);
+    console.log("Check Query Result:", checkResult.rows);
 
     if (checkResult.rows.length > 0) {
       res.status(400).send("Cannot check in. You have an existing session that hasn't been checked out.");
@@ -432,13 +433,16 @@ app.post('/check_in', async (req, res) => {
     `;
     const insertValues = [name, time, date, loginId, type, reason, location];
 
-    await pool.query(insertQuery, insertValues);
+    const insertResult = await pool.query(insertQuery, insertValues);
+    console.log("Insert Query Result:", insertResult);
+
     res.render("admin_dashboard");
   } catch (error) {
     console.error("Error executing check-in query:", error);
     res.status(500).send("Internal Server Error");
   }
 });
+
 
 app.get("/check_out", async (req, res) => {
   user = req.session.user;
