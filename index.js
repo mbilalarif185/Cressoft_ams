@@ -33,11 +33,11 @@ app.use(
     }),
     secret: "my-secret",
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: {
       secure: process.env.NODE_ENV === 'production', // Set secure cookies in production
       maxAge: 1000 * 60 * 60 * 24, // 1 day
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
     }
   })
 );
@@ -442,7 +442,6 @@ app.post('/check_in', async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
-
 
 app.get("/check_out", async (req, res) => {
   user = req.session.user;
