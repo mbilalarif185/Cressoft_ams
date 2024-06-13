@@ -29,9 +29,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 app.get("/", (req, res) => {
   user = req.session.user;
-  
-  if (user) {
-    res.redirect('login')
+  res.render('login')
+  // if (user) {
+  //   res.redirect('login')
     
   //   if ((user.role.toLowerCase().trim() === "web developer")||(user.role.toLowerCase().trim() === "Content Writer")) {
   //     req.session.user = user;
