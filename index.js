@@ -352,7 +352,7 @@ app.post('/check_in', async (req, res) => {
     const insertValues = [name, time, date, loginId, type, reason, location];
 
     await pool.query(insertQuery, insertValues);
-    res.render("admin_dashboard");
+    res.render("dashboard");
   } catch (error) {
     console.error("Error executing check-in query:", error);
     res.status(500).send("Internal Server Error");
@@ -405,7 +405,7 @@ app.post('/check_out', async (req, res) => {
 
     await pool.query(updateQuery, updateValues);
 
-    res.render("admin_dashboard");
+    res.render("dashboard");
   } catch (error) {
     console.error("Error executing check-out query:", error);
     res.status(500).send("Internal Server Error");
