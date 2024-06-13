@@ -70,7 +70,6 @@ app.post("/loginAction", async (req, res) => {
       if (user.role.toLowerCase().trim() === "developer") {
         req.session.user = user;
         let userId = user.id;
-
         res.render("admin_dashboard", { user: user });
       } else if (user.role.toLowerCase().trim() === "content writer") {
         req.session.user = user;
