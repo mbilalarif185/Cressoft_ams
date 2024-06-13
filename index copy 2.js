@@ -2,11 +2,10 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const { Pool } = require("pg");
 const session = require("express-session");
-const pgSession = require("connect-pg-simple")(session);
-const pgp = require("pg-promise")();
-const path = require('path');
 const app = express();
 const PORT = 9000;
+const pgp = require("pg-promise")();
+const path = require('path');
 
 const pool = new Pool({
   connectionString: "postgres://default:Sd9k5QPpcCXK@ep-crimson-bar-a4b1xjdd-pooler.us-east-1.aws.neon.tech:5432/verceldb?sslmode=require?sslmode=require",
@@ -18,58 +17,41 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use("/static", express.static("static"));
 app.use(bodyParser.urlencoded({ extended: true }));
-// app.use(
-//   session({
-//     secret: "my-secret",
-//     resave: false,
-//     saveUninitialized: true,
-//   })
-// );
 app.use(
   session({
-    store: new pgSession({
-      pool: pool, // Connection pool
-      tableName: 'session', // Use another table-name than the default "session" one
-    }),
     secret: "my-secret",
     resave: false,
     saveUninitialized: true,
-    cookie: {
-      secure: process.env.NODE_ENV === 'production', // Set secure cookies in production
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
-    }
   })
 );
 
 app.use(bodyParser.urlencoded({ extended: true }));
-app.get('/', (req, res) => {
-  res.render('index');
-});
-// app.get("/", (req, res) => {
-//   user = req.session.user;
+
+app.get("/", (req, res) => {
+  user = req.session.user;
   
-//   if (user) {
-//     res.redirect('/')
+  if (user) {
+    res.redirect('/')
     
-//     if ((user.role.toLowerCase().trim() === "web developer")||(user.role.toLowerCase().trim() === "Content Writer")) {
-//       req.session.user = user;
-//       let userId = user.id;
+    if ((user.role.toLowerCase().trim() === "web developer")||(user.role.toLowerCase().trim() === "Content Writer")) {
+      req.session.user = user;
+      let userId = user.id;
       
 
-//       res.render("dashboard", { user: user });
-//     } else if (user.role.toLowerCase().trim() === "Content Writer") {
-//       req.session.user = user;
-//       res.render("dashboard", { user: user });
-//     } else if (user.role.toLowerCase().trim() === "audit") {
-//       req.session.user = user;
-//       res.render("audit_dashboard", { user: user });
-//     } else {
-//       res.redirect("signup");
-//     }
-//   } else {
-//     res.render("login");
-//   }
-// });
+      res.render("dashboard", { user: user });
+    } else if (user.role.toLowerCase().trim() === "Content Writer") {
+      req.session.user = user;
+      res.render("dashboard", { user: user });
+    } else if (user.role.toLowerCase().trim() === "audit") {
+      req.session.user = user;
+      res.render("audit_dashboard", { user: user });
+    } else {
+      res.redirect("signup");
+    }
+  } else {
+    res.render("login");
+  }
+});
 
 
 app.post("/loginAction", async (req, res) => {
