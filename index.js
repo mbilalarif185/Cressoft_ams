@@ -2,14 +2,15 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const { Pool } = require("pg");
 const session = require("express-session");
+const pgSession = require("connect-pg-simple")(session);
+const path = require('path');
+
 const app = express();
 const PORT = 9000;
-const pgp = require("pg-promise")();
-const path = require('path');
 
 const pool = new Pool({
   connectionString: "postgres://default:Sd9k5QPpcCXK@ep-crimson-bar-a4b1xjdd-pooler.us-east-1.aws.neon.tech:5432/verceldb?sslmode=require",
-})
+});
 
 app.set('views', path.join(__dirname, 'views'));
 app.set("view engine", "pug");
@@ -17,42 +18,23 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use("/static", express.static("static"));
 app.use(bodyParser.urlencoded({ extended: true }));
+
 app.use(
   session({
+    store: new pgSession({
+      pool: pool, // Connection pool
+      tableName: 'session' // Use the existing table "session"
+    }),
     secret: "my-secret",
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
+    cookie: { secure: false, maxAge: 30 * 24 * 60 * 60 * 1000 } // 30 days
   })
 );
 
-app.use(bodyParser.urlencoded({ extended: true }));
-
-app.get("/", (req, res) => {
-  user = req.session.user;
-  res.render('login')
-  // if (user) {
-  //   res.redirect('login')
-    
-  //   if ((user.role.toLowerCase().trim() === "web developer")||(user.role.toLowerCase().trim() === "Content Writer")) {
-  //     req.session.user = user;
-  //     let userId = user.id;
-      
-
-  //     res.render("dashboard", { user: user });
-  //   } else if (user.role.toLowerCase().trim() === "Content Writer") {
-  //     req.session.user = user;
-  //     res.render("dashboard", { user: user });
-  //   } else if (user.role.toLowerCase().trim() === "audit") {
-  //     req.session.user = user;
-  //     res.render("audit_dashboard", { user: user });
-  //   } else {
-  //     res.redirect("signup");
-  //   }
-  // } else {
-  //   res.render("login");
-  // }
+app.get('/', (req, res) => {
+  res.render('index', { title: 'Home' });
 });
-
 
 app.post("/loginAction", async (req, res) => {
   //console.log(req.body)
