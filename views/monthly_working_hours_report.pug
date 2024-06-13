@@ -3,34 +3,27 @@ html(lang="en")
     meta(charset="utf-8")
     meta(name="viewport", content="width=device-width, initial-scale=1.0")
     link(rel='stylesheet', href='/invoice.css')
-    title Attendance Report
+    title Monthly Attendance Report
   body
     include header1.pug
     div.table-container
-      if reportData.length > 0
-        h1 #{reportData[0].name}'s Attendance Report for the month of #{monthname}, #{year}
-        table.table-bordered
-          thead
+      h1 #{name}'s Monthly Attendance Report for #{monthName}, #{year}
+      table.table-bordered
+        thead
+          tr
+            th Date
+            th Total Working Hours
+            th Break Time
+            th Office Work Time
+            th Other Time
+        tbody
+          each data in monthlyData
             tr
-              th Name
-              th Check-in Time
-              th Check-out Time
-              th Date
-              th Type
-              th Reason
-              th Location
-          tbody
-            each record in reportData
-              tr
-                td= record.name
-                td= record.check_in_time
-                td= record.check_out_time
-                td= record.date
-                td= record.type
-                td= record.reason
-                td= record.location
-      else
-        p No data available for the selected criteria.
+              td= data.date
+              td= data.totalHours + 'h ' + data.totalMinutesRemainder + 'm'
+              td= data.breakHours + 'h ' + data.breakMinutesRemainder + 'm'
+              td= data.officeWorkHours + 'h ' + data.officeWorkMinutesRemainder + 'm'
+              td= data.otherHours + 'h ' + data.otherMinutesRemainder + 'm'
       .button-container
         button.downloadBtn(type="button") Download as PDF
 

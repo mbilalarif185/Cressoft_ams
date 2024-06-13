@@ -1,0 +1,12 @@
+head
+  title Dashboard
+  link(rel='stylesheet', href='/style.css')
+body
+  include header1.pug
+  h2.center.scaps Attendance Report
+  br
+  // In your existing Pug template (e.g., dashboard.pug)
+form(method="post", action="/daily_working_hours")
+  input(type="text", name="name", placeholder="Employee Name", required)
+  input(type="date", name="date", required)
+  button(type="submit") Get Daily Working Hours

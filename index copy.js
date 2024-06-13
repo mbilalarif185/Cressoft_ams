@@ -91,222 +91,6 @@ app.post("/loginAction", async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
-//monthly
-app.get("/monthly_working_hours", async (req, res) => {
-  user = req.session.user;
-  //console.log(user)
-  if (user) {
-    res.render("monthly_working_hours", { userName: user.name });
-  } else {
-    res.redirect("/");
-  }
-});
-
-app.post('/monthly_working_hours', async (req, res) => {
-  const { name, year, month } = req.body;
-  const user = req.session.user;
-  const loginId = user.id;
-
-  const daysInMonth = new Date(year, month, 0).getDate();
-  
-  try {
-    const monthlyData = [];
-    let reportData=[];
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-
-      const query = `
-        SELECT check_in_time, check_out_time, reason,date
-        FROM record
-        WHERE name = $1 AND date = $2 AND id = $3
-        ORDER BY check_in_time;
-      `;
-      const values = [name, date, loginId];
-      const result = await pool.query(query, values);
-      
-      if (result.rows.length > 0) {
-        let totalMinutes = 0;
-        let breakMinutes = 0;
-        let officeWorkMinutes = 0;
-        let otherMinutes = 0;
-
-        for (let i = 0; i < result.rows.length; i++) {
-          const row = result.rows[i];
-          const checkInTime = row.check_in_time;
-          const checkOutTime = row.check_out_time;
-          const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
-
-          if (checkInTime && checkOutTime) {
-            const checkInDateTime = new Date(`1970-01-01T${checkInTime}`);
-            const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
-            const diffMs = checkOutDateTime - checkInDateTime;
-            const diffMinutes = diffMs / 1000 / 60;
-
-            totalMinutes += diffMinutes;
-          }
-
-          if (checkOutTime && i < result.rows.length - 1) {
-            const nextRow = result.rows[i + 1];
-            const nextCheckInTime = nextRow.check_in_time;
-            if (nextCheckInTime) {
-              const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
-              const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}`);
-              const diffMs = nextCheckInDateTime - checkOutDateTime;
-              const diffMinutes = diffMs / 1000 / 60;
-
-              if (reason === 'break') {
-                breakMinutes += diffMinutes;
-              } else if (reason.includes('office')) { // Check if reason contains "office"
-                officeWorkMinutes += diffMinutes;
-              } else {
-                otherMinutes += diffMinutes;
-              }
-            }
-          }
-        }
-
-        const totalHours = Math.floor(totalMinutes / 60);
-        const totalMinutesRemainder = totalMinutes % 60;
-
-        const breakHours = Math.floor(breakMinutes / 60);
-        const breakMinutesRemainder = breakMinutes % 60;
-
-        const officeWorkHours = Math.floor(officeWorkMinutes / 60);
-        const officeWorkMinutesRemainder = officeWorkMinutes % 60;
-
-        const otherHours = Math.floor(otherMinutes / 60);
-        const otherMinutesRemainder = otherMinutes % 60;
-
-        monthlyData.push({
-          date,
-          totalHours,
-          totalMinutesRemainder,
-          breakHours,
-          breakMinutesRemainder,
-          officeWorkHours,
-          officeWorkMinutesRemainder,
-          otherHours,
-          otherMinutesRemainder
-        });
-      }
-    }
-
-    res.render('monthly_working_hours_report', { name, year, month, monthlyData,reportData });
-  } catch (error) {
-    console.error("Error executing query:", error);
-    res.status(500).send("Internal Server Error");
-  }
-});
-
-
-app.get("/daily_working_hours", async (req, res) => {
-  user = req.session.user;
-  //console.log(user)
-  if (user) {
-    res.render("daily_working_hours", { userName: user.name });
-  } else {
-    res.redirect("/");
-  }
-});
-
-app.post('/daily_working_hours', async (req, res) => {
-  const { name, date } = req.body;
-  const user = req.session.user;
-  const loginId = user.id;
-
-  try {
-    const query = `
-      SELECT check_in_time, check_out_time, reason
-      FROM record
-      WHERE name = $1 AND date = $2 AND id = $3
-      ORDER BY check_in_time;
-    `;
-    const values = [name, date, loginId];
-    const result = await pool.query(query, values);
-
-    if (result.rows.length === 0) {
-      res.status(404).send("No records found for the specified date.");
-      return;
-    }
-
-    let totalMinutes = 0;
-    let breakMinutes = 0;
-    let officeWorkMinutes = 0;
-    let otherMinutes = 0;
-
-    for (let i = 0; i < result.rows.length; i++) {
-      const row = result.rows[i];
-      const checkInTime = row.check_in_time;
-      const checkOutTime = row.check_out_time;
-      const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
-
-      if (checkInTime && checkOutTime) {
-        const checkInDateTime = new Date(`1970-01-01T${checkInTime}`);
-        const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
-        const diffMs = checkOutDateTime - checkInDateTime;
-        const diffMinutes = diffMs / 1000 / 60;
-
-        totalMinutes += diffMinutes;
-      }
-
-      if (checkOutTime && i < result.rows.length - 1) {
-        const nextRow = result.rows[i + 1];
-        const nextCheckInTime = nextRow.check_in_time;
-        if (nextCheckInTime) {
-          const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
-          const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}`);
-          const diffMs = nextCheckInDateTime - checkOutDateTime;
-          const diffMinutes = diffMs / 1000 / 60;
-
-          console.log(`Reason: "${reason}", Diff Minutes: ${diffMinutes}`);
-
-          if (reason === 'break') {
-            breakMinutes += diffMinutes;
-            console.log("BREAK")
-          } else if (reason.includes('office')) { // Check if reason contains "office"
-            officeWorkMinutes += diffMinutes;
-            console.log("OFFICE WORK")
-          } else {
-            otherMinutes += diffMinutes;
-            console.log("OTHER")
-          }
-        }
-      }
-    }
-
-    const totalHours = Math.floor(totalMinutes / 60);
-    const totalMinutesRemainder = totalMinutes % 60;
-
-    const breakHours = Math.floor(breakMinutes / 60);
-    const breakMinutesRemainder = breakMinutes % 60;
-
-    const officeWorkHours = Math.floor(officeWorkMinutes / 60);
-    const officeWorkMinutesRemainder = officeWorkMinutes % 60;
-
-    const otherHours = Math.floor(otherMinutes / 60);
-    const otherMinutesRemainder = otherMinutes % 60;
-
-    res.render('daily_working_hours_report', { 
-      name, 
-      date, 
-      totalHours, 
-      totalMinutesRemainder, 
-      breakHours, 
-      breakMinutesRemainder, 
-      officeWorkHours, 
-      officeWorkMinutesRemainder, 
-      otherHours, 
-      otherMinutesRemainder 
-    });
-  } catch (error) {
-    console.error("Error executing query:", error);
-    res.status(500).send("Internal Server Error");
-  }
-});
-
-
-
 app.get("/check_in", async (req, res) => {
   user = req.session.user;
   //console.log(user)
@@ -316,33 +100,40 @@ app.get("/check_in", async (req, res) => {
     res.redirect("/");
   }
 });
-
-// Check-in route
 app.post('/check_in', async (req, res) => {
-  const { name, date, location,time } = req.body;
-  const user = req.session.user;
-  const loginId = user.id;
-  const type = 'IN';
-  const reason = ''; // You can set a reason if needed
-
+  user = req.session.user;
+  //console.log(user)
+  // console.log(user.id)
+  // console.log(user.email)
+  //console.log("POst")
+  let login_id = 0;
+  login_id = user.id;
+  let type="IN";
+  let reason=''
+  const {name, time, date,location } = req.body;
+  // console.log(name);
+  // console.log(time)
+    console.log("Location is:",location)
   try {
-    // Get the current time in the expected format (HH:MM:SS)
-    const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false });
-
-    // Insert the check-in time into the record table
     const insertQuery =
-      "INSERT INTO record(name, check_in_time, date, id, type, reason, location) VALUES ($1, $2, $3, $4, $5, $6, $7)";
-    const insertValues = [name, time, date, loginId, type, reason, location];
+      "INSERT INTO record(name,time,date,id,type,reason,location) VALUES ($1, $2, $3, $4,$5,$6,$7)";
+    const insertValues = [
+      name,
+      time,
+      date,
+      login_id,
+      type,
+      reason,
+      location,
+    ];
 
     await pool.query(insertQuery, insertValues);
-    res.render("admin_dashboard");
+    res.render("dashboard");
   } catch (error) {
-    console.error("Error executing check-in query:", error);
+    console.error("Error executing query", error);
     res.status(500).send("Internal Server Error");
   }
 });
-
-
 
 app.get("/check_out", async (req, res) => {
   user = req.session.user;
@@ -355,47 +146,37 @@ app.get("/check_out", async (req, res) => {
 });
 
 app.post('/check_out', async (req, res) => {
-  const user = req.session.user;
-  const loginId = user.id;
-  const { name, time, date, reason } = req.body;
-  console.log("Time:", time);
-  console.log("Reason:", reason);
+  user = req.session.user;
+  console.log(user)
+  // console.log(user.id)
+  // console.log(user.email)
+  //console.log("POst")
+  let login_id = 0;
+  login_id = user.id;
+  let type="OUT";
+  const {name, time, date,reason } = req.body;
+  console.log(name);
+  console.log(time)
+  console.log(date)
   try {
-    // Ensure the time parameter is formatted correctly
-    const formattedTime = new Date(`1970-01-01T${time}`).toISOString().slice(11, 19);
-    console.log("CHange time is :",formattedTime)
-    const selectQuery = `
-      SELECT id FROM record
-      WHERE name = $1 AND date = $2 AND id = $3 AND check_out_time IS NULL
-      LIMIT 1;
-    `;
-    const selectValues = [name, date, loginId];
-    
-    const selectResult = await pool.query(selectQuery, selectValues);
+    const insertQuery =
+      "INSERT INTO record(name,time,date,id,type,reason) VALUES ($1, $2, $3, $4,$5,$6)";
+    const insertValues = [
+      name,
+      time,
+      date,
+      login_id,
+      type,
+      reason,
+    ];
 
-    if (selectResult.rows.length === 0) {
-      res.status(400).send("Check-in record not found or already checked out.");
-      return;
-    }
-
-    const updateQuery = `
-      UPDATE record
-      SET check_out_time = $1, reason = $2
-      WHERE id = $3 AND date = $4 AND check_out_time IS NULL;
-    `;
-    const updateValues = [time, reason, loginId, date];
-
-    await pool.query(updateQuery, updateValues);
-
-    res.render("admin_dashboard");
+    await pool.query(insertQuery, insertValues);
+    res.render("dashboard");
   } catch (error) {
-    console.error("Error executing check-out query:", error);
+    console.error("Error executing query", error);
     res.status(500).send("Internal Server Error");
   }
 });
-
-
-
 ////Add Employee
 app.get("/add_employee", async (req, res) => {
   user = req.session.user;
@@ -515,7 +296,7 @@ app.post('/daily_report', async (req, res) => {
   }
 });
 
-// // // Report route
+
 app.post('/report', async (req, res) => {
   const user = req.session.user;
   const { name, year, month } = req.body;
@@ -523,7 +304,7 @@ app.post('/report', async (req, res) => {
   async function generateUserReportByNameAndMonth(name, year, month) {
     try {
       const query = `
-        SELECT name, check_in_time, check_out_time, date, type, reason, location
+        SELECT name, time, date, type, reason, location
         FROM record
         WHERE (
           lower(name) LIKE lower($1) OR
@@ -532,7 +313,7 @@ app.post('/report', async (req, res) => {
         )
         AND EXTRACT(YEAR FROM date) = $4
         AND EXTRACT(MONTH FROM date) = $5
-        ORDER BY date, check_in_time;
+        ORDER BY time;
       `;
   
       const values = [
@@ -578,6 +359,9 @@ app.post('/report', async (req, res) => {
   }
 });
 
+
+
+
 app.get("/logout", (req, res) => {
   req.session.user = null;
   res.redirect("/");
@@ -603,6 +387,3 @@ app.listen(PORT, () => {
 //         ON UPDATE NO ACTION
 //         ON DELETE NO ACTION
 // );
-
-
-

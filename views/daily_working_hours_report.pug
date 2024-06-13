@@ -7,30 +7,30 @@ html(lang="en")
   body
     include header1.pug
     div.table-container
-      if reportData.length > 0
-        h1 #{reportData[0].name}'s Attendance Report for the month of #{monthname}, #{year}
-        table.table-bordered
-          thead
-            tr
-              th Name
-              th Check-in Time
-              th Check-out Time
-              th Date
-              th Type
-              th Reason
-              th Location
-          tbody
-            each record in reportData
-              tr
-                td= record.name
-                td= record.check_in_time
-                td= record.check_out_time
-                td= record.date
-                td= record.type
-                td= record.reason
-                td= record.location
-      else
-        p No data available for the selected criteria.
+      h1 #{name}'s Attendance Report for #{date}
+      table.table-bordered
+        thead
+          tr
+            th Metric
+            th Hours
+            th Minutes
+        tbody
+          tr
+            td Total Working Hours
+            td= totalHours
+            td= totalMinutesRemainder
+          tr
+            td Break Time
+            td= breakHours
+            td= breakMinutesRemainder
+          tr
+            td Office Work Time
+            td= officeWorkHours
+            td= officeWorkMinutesRemainder
+          tr
+            td Other Time
+            td= otherHours
+            td= otherMinutesRemainder
       .button-container
         button.downloadBtn(type="button") Download as PDF
 
