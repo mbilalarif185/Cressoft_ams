@@ -43,7 +43,7 @@ app.use(
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.get('/', (req, res) => {
-  res.render('index');
+  res.render('login');
 });
 // app.get("/", (req, res) => {
 //   user = req.session.user;
