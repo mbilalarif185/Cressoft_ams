@@ -111,20 +111,32 @@ app.post('/monthly_working_hours', async (req, res) => {
   
   try {
     const monthlyData = [];
-    let reportData=[];
+    let NAME='';
 
     for (let day = 1; day <= daysInMonth; day++) {
       const date = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
 
       const query = `
-        SELECT check_in_time, check_out_time, reason,date
+        SELECT name,check_in_time, check_out_time, reason,date
         FROM record
-        WHERE name = $1 AND date = $2 AND id = $3
+        WHERE (
+          lower(name) LIKE lower($1) OR
+          lower(name) LIKE lower($2) OR
+          lower(name) LIKE lower($3)
+        )
+        AND date = $4 AND id = $5
         ORDER BY check_in_time;
       `;
-      const values = [name, date, loginId];
+      // const values = [name, date, loginId];
+      const values = [
+        `%${name.split(' ')[0]}%`, // First part of the name
+        `%${name.split(' ')[1]}%`, // Middle part of the name
+        `%${name.split(' ')[2]}%`, // Last part of the name
+        date,
+        loginId
+      ];
       const result = await pool.query(query, values);
-      
+     
       if (result.rows.length > 0) {
         let totalMinutes = 0;
         let breakMinutes = 0;
@@ -134,6 +146,7 @@ app.post('/monthly_working_hours', async (req, res) => {
         for (let i = 0; i < result.rows.length; i++) {
           const row = result.rows[i];
           const checkInTime = row.check_in_time;
+          NAME=row.name;
           const checkOutTime = row.check_out_time;
           const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
 
@@ -177,8 +190,9 @@ app.post('/monthly_working_hours', async (req, res) => {
 
         const otherHours = Math.floor(otherMinutes / 60);
         const otherMinutesRemainder = otherMinutes % 60;
-
+      
         monthlyData.push({
+          NAME,
           date,
           totalHours,
           totalMinutesRemainder,
@@ -191,8 +205,18 @@ app.post('/monthly_working_hours', async (req, res) => {
         });
       }
     }
-
-    res.render('monthly_working_hours_report', { name, year, month, monthlyData,reportData });
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+  
+    let monthname = '';
+    if (month >= 1 && month <= 12) {
+      monthname = months[month - 1]; // Months array is zero-based
+    } else {
+      throw new Error('Invalid month number');
+    }
+    res.render('monthly_working_hours_report', {year, monthname, monthlyData});
   } catch (error) {
     console.error("Error executing query:", error);
     res.status(500).send("Internal Server Error");
@@ -316,22 +340,34 @@ app.get("/check_in", async (req, res) => {
     res.redirect("/");
   }
 });
-
-// Check-in route
 app.post('/check_in', async (req, res) => {
-  const { name, date, location,time } = req.body;
+  const { name, date, location, time } = req.body;
   const user = req.session.user;
   const loginId = user.id;
   const type = 'IN';
-  const reason = ''; // You can set a reason if needed
+  const reason = ''; // Set a reason if needed
 
   try {
-    // Get the current time in the expected format (HH:MM:SS)
-    const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false });
+    // Check if the user has any unchecked-out record for the given date
+    const checkQuery = `
+      SELECT id FROM record
+      WHERE name = $1 AND date = $2 AND id = $3 AND check_out_time IS NULL
+      LIMIT 1;
+    `;
+    const checkValues = [name, date, loginId];
+
+    const checkResult = await pool.query(checkQuery, checkValues);
+
+    if (checkResult.rows.length > 0) {
+      res.status(400).send("Cannot check in. You have an existing session that hasn't been checked out.");
+      return;
+    }
 
     // Insert the check-in time into the record table
-    const insertQuery =
-      "INSERT INTO record(name, check_in_time, date, id, type, reason, location) VALUES ($1, $2, $3, $4, $5, $6, $7)";
+    const insertQuery = `
+      INSERT INTO record(name, check_in_time, date, id, type, reason, location)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `;
     const insertValues = [name, time, date, loginId, type, reason, location];
 
     await pool.query(insertQuery, insertValues);
@@ -342,8 +378,6 @@ app.post('/check_in', async (req, res) => {
   }
 });
 
-
-
 app.get("/check_out", async (req, res) => {
   user = req.session.user;
   //console.log(user)
@@ -353,17 +387,18 @@ app.get("/check_out", async (req, res) => {
     res.redirect("/");
   }
 });
-
 app.post('/check_out', async (req, res) => {
   const user = req.session.user;
   const loginId = user.id;
   const { name, time, date, reason } = req.body;
   console.log("Time:", time);
   console.log("Reason:", reason);
+  
   try {
-    // Ensure the time parameter is formatted correctly
-    const formattedTime = new Date(`1970-01-01T${time}`).toISOString().slice(11, 19);
-    console.log("CHange time is :",formattedTime)
+   
+    const [hours, minutes, seconds] = time.split(':');
+    const formattedTime = `${hours}:${minutes}:${seconds}`;
+    console.log("Formatted Time:", formattedTime);
     const selectQuery = `
       SELECT id FROM record
       WHERE name = $1 AND date = $2 AND id = $3 AND check_out_time IS NULL
@@ -378,11 +413,13 @@ app.post('/check_out', async (req, res) => {
       return;
     }
 
+    // Update query to set the check-out time and reason
     const updateQuery = `
       UPDATE record
       SET check_out_time = $1, reason = $2
       WHERE id = $3 AND date = $4 AND check_out_time IS NULL;
     `;
+    console.log("Change Time:",formattedTime)
     const updateValues = [time, reason, loginId, date];
 
     await pool.query(updateQuery, updateValues);
@@ -393,8 +430,6 @@ app.post('/check_out', async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
-
-
 
 ////Add Employee
 app.get("/add_employee", async (req, res) => {
@@ -459,18 +494,18 @@ app.post('/daily_report', async (req, res) => {
   const user = req.session.user;
   const { name, date } = req.body;
   let day='2024-04-16'
-  async function generateUserReportByNameAndMonth(name,date) {
+  async function generateUserReportByNameAndMonth(name, year, month) {
     try {
       const query = `
-        SELECT name, time, date, type, reason
+        SELECT name, check_in_time, check_out_time, date,reason, location
         FROM record
         WHERE (
           lower(name) LIKE lower($1) OR
           lower(name) LIKE lower($2) OR
           lower(name) LIKE lower($3)
         )
-        AND date::date = $4::date
-        ORDER BY time;
+        AND date::date= $4::date
+        ORDER BY date, check_in_time;
       `;
   
       const values = [
@@ -478,7 +513,7 @@ app.post('/daily_report', async (req, res) => {
         `%${name.split(' ')[1]}%`, // Middle part of the name
         `%${name.split(' ')[2]}%`, // Last part of the name
         date
-      ];
+      ]; // Use % for wildcard matching
 
       const result = await pool.query(query, values);
   
@@ -488,7 +523,6 @@ app.post('/daily_report', async (req, res) => {
       throw error; // Throw the error for handling in the caller function
     }
   }
-
   try {
     const reportData = await generateUserReportByNameAndMonth(name,date);
 
@@ -496,17 +530,7 @@ app.post('/daily_report', async (req, res) => {
       record.date = new Date(record.date).toDateString().slice(0, 10);
     });
 
-    // const months = [
-    //   'January', 'February', 'March', 'April', 'May', 'June',
-    //   'July', 'August', 'September', 'October', 'November', 'December'
-    // ];
-  
-    // let monthname = '';
-    // if (month >= 1 && month <= 12) {
-    //   monthname = months[month - 1]; // Months array is zero-based
-    // } else {
-    //   throw new Error('Invalid month number');
-    // }
+    
     
     res.render('oneday_report', { user, reportData,date });
   } catch (error) {

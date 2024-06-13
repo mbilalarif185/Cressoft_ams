@@ -9,22 +9,24 @@ html(lang="en")
     div.table-container
       if reportData.length > 0
         h1 #{reportData[0].name}'s Attendance Report for the Date of #{date}
-        table.table-bordered
+         table.table-bordered
           thead
             tr
               th Name
-              th Time
+              th Check-in Time
+              th Check-out Time
               th Date
-              th Type
               th Reason
+              th Location
           tbody
             each record in reportData
               tr
                 td= record.name
-                td= record.time
+                td= record.check_in_time
+                td= record.check_out_time
                 td= record.date
-                td= record.type
                 td= record.reason
+                td= record.location
       else
         p No data available for the selected criteria.
       .button-container
