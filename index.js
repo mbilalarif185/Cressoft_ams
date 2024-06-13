@@ -2,12 +2,11 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const { Pool } = require("pg");
 const session = require("express-session");
-const pgSession = require("connect-pg-simple")(session);
-const pgp = require("pg-promise")();
-const path = require('path');
 const app = express();
 const PORT = 9000;
-require('dotenv').config();
+const pgp = require("pg-promise")();
+const path = require('path');
+
 const pool = new Pool({
   connectionString: "postgres://default:Sd9k5QPpcCXK@ep-crimson-bar-a4b1xjdd-pooler.us-east-1.aws.neon.tech:5432/verceldb?sslmode=require?sslmode=require",
 })
@@ -18,129 +17,74 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use("/static", express.static("static"));
 app.use(bodyParser.urlencoded({ extended: true }));
-// app.use(
-//   session({
-//     secret: "my-secret",
-//     resave: false,
-//     saveUninitialized: true,
-//   })
-// );
 app.use(
   session({
-    store: new pgSession({
-      pool: pool, // Connection pool
-      tableName: 'session', // Use another table-name than the default "session" one
-    }),
     secret: "my-secret",
     resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === 'production', // Set secure cookies in production
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-    }
+    saveUninitialized: true,
   })
 );
 
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use((req, res, next) => {
-  console.log('Session Data:', req.session);
-  console.log('Session ID:', req.sessionID);
-  next();
-});
-app.get('/', (req, res) => {
-  res.render('login');
-});
-// app.get("/", (req, res) => {
-//   user = req.session.user;
+
+app.get("/", (req, res) => {
+  user = req.session.user;
   
-//   if (user) {
-//     res.redirect('/')
+  if (user) {
+    res.redirect('/')
     
-//     if ((user.role.toLowerCase().trim() === "web developer")||(user.role.toLowerCase().trim() === "Content Writer")) {
-//       req.session.user = user;
-//       let userId = user.id;
+    if ((user.role.toLowerCase().trim() === "web developer")||(user.role.toLowerCase().trim() === "Content Writer")) {
+      req.session.user = user;
+      let userId = user.id;
       
 
-//       res.render("dashboard", { user: user });
-//     } else if (user.role.toLowerCase().trim() === "Content Writer") {
-//       req.session.user = user;
-//       res.render("dashboard", { user: user });
-//     } else if (user.role.toLowerCase().trim() === "audit") {
-//       req.session.user = user;
-//       res.render("audit_dashboard", { user: user });
-//     } else {
-//       res.redirect("signup");
-//     }
-//   } else {
-//     res.render("login");
-//   }
-// });
+      res.render("dashboard", { user: user });
+    } else if (user.role.toLowerCase().trim() === "Content Writer") {
+      req.session.user = user;
+      res.render("dashboard", { user: user });
+    } else if (user.role.toLowerCase().trim() === "audit") {
+      req.session.user = user;
+      res.render("audit_dashboard", { user: user });
+    } else {
+      res.redirect("signup");
+    }
+  } else {
+    res.render("login");
+  }
+});
 
-
-// app.post("/loginAction", async (req, res) => {
-//   //console.log(req.body)
-//   const { email, password } = req.body;
-//   const query = "SELECT * FROM login WHERE email = $1 AND password = $2";
-//   const values = [email, password];
-//   //console.log(values)
-//   try {
-//     const result = await pool.query(query, values);
-//     const user = result.rows[0];
-
-//     if (user) {
-//       req.session.userId = user.id;
-//       console.log(user.id)
-//       if (user.role.toLowerCase().trim() === "developer") {
-//         req.session.user = user;
-//         let userId = user.id;
-
-//         res.render("admin_dashboard", { user: user });
-//       } else if (user.role.toLowerCase().trim() === "content writer") {
-//         req.session.user = user;
-//         res.render("dashboard", { user: user });
-//       } else if (user.role.toLowerCase().trim() === "ai") {
-//         req.session.user = user;
-//         res.render("dashboard", { user: user });
-//       } else {
-//         res.redirect("signup");
-//       }
-//     } else {
-//       res.render("login", {
-//       error: "Login Credentials are wrong.",
-//     });
-//     }
-//   } catch (error) {
-//     console.error("Error executing query", error);
-//     res.status(500).send("Internal Server Error");
-//   }
-// });
 
 app.post("/loginAction", async (req, res) => {
+  //console.log(req.body)
   const { email, password } = req.body;
   const query = "SELECT * FROM login WHERE email = $1 AND password = $2";
   const values = [email, password];
-
+  //console.log(values)
   try {
     const result = await pool.query(query, values);
     const user = result.rows[0];
 
     if (user) {
       req.session.userId = user.id;
-      req.session.user = user;
-      console.log(user.id);
-
+      console.log(user.id)
       if (user.role.toLowerCase().trim() === "developer") {
+        req.session.user = user;
+        let userId = user.id;
+
         res.render("admin_dashboard", { user: user });
-      } else if (user.role.toLowerCase().trim() === "content writer" || user.role.toLowerCase().trim() === "ai") {
+      } else if (user.role.toLowerCase().trim() === "content writer") {
+        req.session.user = user;
+        res.render("dashboard", { user: user });
+      } else if (user.role.toLowerCase().trim() === "ai") {
+        req.session.user = user;
         res.render("dashboard", { user: user });
       } else {
         res.redirect("signup");
       }
     } else {
       res.render("login", {
-        error: "Login Credentials are wrong.",
-      });
+      error: "Login Credentials are wrong.",
+    });
     }
   } catch (error) {
     console.error("Error executing query", error);
@@ -389,27 +333,21 @@ app.post('/daily_working_hours', async (req, res) => {
 
 app.get("/check_in", async (req, res) => {
   user = req.session.user;
-  //console.log(user)
+  console.log(user)
   if (user) {
     res.render("check_in", { userName: user.name });
   } else {
     res.redirect("/");
   }
 });
-
 app.post('/check_in', async (req, res) => {
   const { name, date, location, time } = req.body;
   const user = req.session.user;
-  const loginId = user ? user.id : null;  // Ensure user is defined
+  const loginId = user.id;
   const type = 'IN';
   const reason = ''; // Set a reason if needed
 
   try {
-    if (!loginId) {
-      res.status(400).send("User not logged in.");
-      return;
-    }
-
     // Check if the user has any unchecked-out record for the given date
     const checkQuery = `
       SELECT id FROM record
@@ -419,7 +357,6 @@ app.post('/check_in', async (req, res) => {
     const checkValues = [name, date, loginId];
 
     const checkResult = await pool.query(checkQuery, checkValues);
-    console.log("Check Query Result:", checkResult.rows);
 
     if (checkResult.rows.length > 0) {
       res.status(400).send("Cannot check in. You have an existing session that hasn't been checked out.");
@@ -433,9 +370,7 @@ app.post('/check_in', async (req, res) => {
     `;
     const insertValues = [name, time, date, loginId, type, reason, location];
 
-    const insertResult = await pool.query(insertQuery, insertValues);
-    console.log("Insert Query Result:", insertResult);
-
+    await pool.query(insertQuery, insertValues);
     res.render("admin_dashboard");
   } catch (error) {
     console.error("Error executing check-in query:", error);
