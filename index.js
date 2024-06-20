@@ -49,7 +49,7 @@ app.post("/loginAction", async (req, res) => {
     if (user) {
       req.session.userId = user.id;
       console.log(user.id)
-      if (user.role.toLowerCase().trim() === "developer") {
+      if (user.role.toLowerCase().trim() === "admin") {
         req.session.user = user;
         let userId = user.id;
         res.render("admin_dashboard", { user: user });
@@ -60,7 +60,8 @@ app.post("/loginAction", async (req, res) => {
         req.session.user = user;
         res.render("dashboard", { user: user });
       } else {
-        res.redirect("signup");
+        req.session.user = user;
+        res.render("dashboard", { user: user });
       }
     } else {
       res.render("login", {
@@ -253,13 +254,13 @@ app.get("/review_leaves", async (req, res) => {
   const user = req.session.user;
   console.log("User session:", user);  // Debugging line
 
-  if (user && user.role.trim().toLowerCase() === 'developer') {
+  if (user && user.role.trim().toLowerCase() === 'admin') {
     try {
       const query = `
         SELECT leaves.leave_id, leaves.user_id, leaves.start_date, leaves.end_date, leaves.reason, leaves.status, login.name
         FROM leaves
         JOIN login ON leaves.user_id = login.id
-        WHERE leaves.status = 'Pending'
+        WHERE leaves.status = 'Pending' AND login.role != 'admin'
         ORDER BY leaves.start_date DESC;
       `;
       const result = await pool.query(query);
@@ -271,9 +272,9 @@ app.get("/review_leaves", async (req, res) => {
         leave.end_date = new Date(leave.end_date).toLocaleDateString();
       });
 
-      // Fetch all users and their leave counts
+      // Fetch all users and their leave counts, excluding admins
       const usersQuery = `
-        SELECT id, name FROM login
+        SELECT id, name FROM login WHERE role != 'admin'
       `;
       const usersResult = await pool.query(usersQuery);
       const users = usersResult.rows;
@@ -325,7 +326,7 @@ app.get("/admin_leave_history", async (req, res) => {
   const user = req.session.user;
   console.log("User session:", user);  // Debugging line
 
-  if (user && user.role.trim().toLowerCase() === 'developer') {
+  if (user && user.role.trim().toLowerCase() === 'admin') {
     res.render("select_admin_leave_history", { userName: user.name });
   } else {
     res.redirect("/");
@@ -364,7 +365,7 @@ app.post("/admin_leave_history", async (req, res) => {
   const { year, month } = req.body;
   console.log("User session:", user);  // Debugging line
 
-  if (user && user.role.trim().toLowerCase() === 'developer') {
+  if (user && user.role.trim().toLowerCase() === 'admin') {
     try {
       const query = `
         SELECT login.name, 
@@ -391,11 +392,37 @@ app.post("/admin_leave_history", async (req, res) => {
 });
 
 
+// app.get("/leave_history_admin", async (req, res) => {
+//   const user = req.session.user;
+//   console.log("User session:", user);  // Debugging line
+
+//   if (user && user.role.trim().toLowerCase() === 'admin') {
+//     try {
+//       const query = `
+//         SELECT login.id, login.name,
+//                COALESCE(SUM(CASE WHEN leaves.status = 'Approved' THEN (leaves.end_date - leaves.start_date + 1) ELSE 0 END), 0) AS approved_leave_days,
+//                COALESCE(SUM(CASE WHEN leaves.status = 'Rejected' THEN (leaves.end_date - leaves.start_date + 1) ELSE 0 END), 0) AS rejected_leave_days
+//         FROM login
+//         LEFT JOIN leaves ON login.id = leaves.user_id
+//         GROUP BY login.id, login.name
+//         ORDER BY login.name;
+//       `;
+//       const result = await pool.query(query);
+//       const leaveSummary = result.rows;
+//       res.render("leave_history_admin", { userName: user.name, leaveSummary });
+//     } catch (error) {
+//       console.error("Error fetching leave records:", error);
+//       res.status(500).send("Internal Server Error");
+//     }
+//   } else {
+//     res.redirect("/");
+//   }
+// });
 app.get("/leave_history_admin", async (req, res) => {
   const user = req.session.user;
   console.log("User session:", user);  // Debugging line
 
-  if (user && user.role.trim().toLowerCase() === 'developer') {
+  if (user && user.role.trim().toLowerCase() === 'admin') {
     try {
       const query = `
         SELECT login.id, login.name,
@@ -403,6 +430,7 @@ app.get("/leave_history_admin", async (req, res) => {
                COALESCE(SUM(CASE WHEN leaves.status = 'Rejected' THEN (leaves.end_date - leaves.start_date + 1) ELSE 0 END), 0) AS rejected_leave_days
         FROM login
         LEFT JOIN leaves ON login.id = leaves.user_id
+        WHERE login.role != 'admin'
         GROUP BY login.id, login.name
         ORDER BY login.name;
       `;
@@ -805,9 +833,7 @@ app.get("/add_employee", async (req, res) => {
 app.post('/add_employee', async (req, res) => {
   user = req.session.user;
   console.log(user)
-  // console.log(user.id)
-  // console.log(user.email)
-  //console.log("POst")
+  
   let login_id = 0;
   login_id = user.id;
   const {name,role, email,password } = req.body;
