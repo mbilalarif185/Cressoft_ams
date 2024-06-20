@@ -215,6 +215,7 @@ app.get("/daily_working_hours", async (req, res) => {
   }
 });
 
+
 app.post('/daily_working_hours', async (req, res) => {
   const { name, date } = req.body;
   const user = req.session.user;
@@ -224,10 +225,22 @@ app.post('/daily_working_hours', async (req, res) => {
     const query = `
       SELECT check_in_time, check_out_time, reason
       FROM record
-      WHERE name = $1 AND date = $2 AND id = $3
+      WHERE (
+          lower(name) LIKE lower($1) OR
+          lower(name) LIKE lower($2) OR
+          lower(name) LIKE lower($3)
+        )
+      AND date = $4 AND id = $5
       ORDER BY check_in_time;
     `;
-    const values = [name, date, loginId];
+    const values = [
+        `%${name.split(' ')[0]}%`, // First part of the name
+        `%${name.split(' ')[1]}%`, // Middle part of the name
+        `%${name.split(' ')[2]}%`, // Last part of the name
+        date,
+        loginId
+      ];
+    
     const result = await pool.query(query, values);
 
     if (result.rows.length === 0) {
@@ -309,7 +322,6 @@ app.post('/daily_working_hours', async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
-
 
 
 app.get("/check_in", async (req, res) => {
