@@ -3,12 +3,12 @@ html(lang="en")
     meta(charset="utf-8")
     meta(name="viewport", content="width=device-width, initial-scale=1.0")
     link(rel='stylesheet', href='/invoice.css')
-    title Attendance Report
+    title Cressoft AMS Employee Attendance Report
   body
     include header1.pug
     div.table-container
       if reportData.length > 0
-        h1 #{reportData[0].name}'s Attendance Report for the month of #{monthname}, #{year}
+        h2 #{reportData[0].name}'s Attendance Report for the month of #{monthname}, #{year}
         table.table-bordered
           thead
             tr
