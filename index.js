@@ -476,22 +476,163 @@ app.get("/monthly_working_hours", async (req, res) => {
   }
 });
 
+// app.post('/monthly_working_hours', async (req, res) => {
+//   const { name, year, month } = req.body;
+//   const user = req.session.user;
+//   const loginId = user.id;
+
+//   const daysInMonth = new Date(year, month, 0).getDate();
+  
+//   try {
+//     const monthlyData = [];
+//     let NAME='';
+
+//     for (let day = 1; day <= daysInMonth; day++) {
+//       const date = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+
+//       const query = `
+//         SELECT name,check_in_time, check_out_time, reason,date
+//         FROM record
+//         WHERE (
+//           lower(name) LIKE lower($1) OR
+//           lower(name) LIKE lower($2) OR
+//           lower(name) LIKE lower($3)
+//         )
+//         AND date = $4 AND id = $5
+//         ORDER BY check_in_time;
+//       `;
+//       // const values = [name, date, loginId];
+//       const values = [
+//         `%${name.split(' ')[0]}%`, // First part of the name
+//         `%${name.split(' ')[1]}%`, // Middle part of the name
+//         `%${name.split(' ')[2]}%`, // Last part of the name
+//         date,
+//         loginId
+//       ];
+//       const result = await pool.query(query, values);
+     
+//       if (result.rows.length > 0) {
+//         let totalMinutes = 0;
+//         let breakMinutes = 0;
+//         let officeWorkMinutes = 0;
+//         let otherMinutes = 0;
+
+//         for (let i = 0; i < result.rows.length; i++) {
+//           const row = result.rows[i];
+//           const checkInTime = row.check_in_time;
+//           NAME=row.name;
+//           const checkOutTime = row.check_out_time;
+//           const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
+
+//           if (checkInTime && checkOutTime) {
+//             const checkInDateTime = new Date(`1970-01-01T${checkInTime}`);
+//             const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
+//             const diffMs = checkOutDateTime - checkInDateTime;
+//             const diffMinutes = diffMs / 1000 / 60;
+
+//             totalMinutes += diffMinutes;
+//           }
+
+//           if (checkOutTime && i < result.rows.length - 1) {
+//             const nextRow = result.rows[i + 1];
+//             const nextCheckInTime = nextRow.check_in_time;
+//             if (nextCheckInTime) {
+//               const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
+//               const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}`);
+//               const diffMs = nextCheckInDateTime - checkOutDateTime;
+//               const diffMinutes = diffMs / 1000 / 60;
+
+//               if (reason === 'break') {
+//                 breakMinutes += diffMinutes;
+//               } else if (reason.includes('office')) { // Check if reason contains "office"
+//                 officeWorkMinutes += diffMinutes;
+//               } else {
+//                 otherMinutes += diffMinutes;
+//               }
+//             }
+//           }
+//         }
+
+//         const totalHours = Math.floor(totalMinutes / 60);
+//         const totalMinutesRemainder = totalMinutes % 60;
+
+//         const breakHours = Math.floor(breakMinutes / 60);
+//         const breakMinutesRemainder = breakMinutes % 60;
+
+//         const officeWorkHours = Math.floor(officeWorkMinutes / 60);
+//         const officeWorkMinutesRemainder = officeWorkMinutes % 60;
+
+//         const otherHours = Math.floor(otherMinutes / 60);
+//         const otherMinutesRemainder = otherMinutes % 60;
+//         console.log("Name",NAME)
+//         monthlyData.push({
+//           NAME,
+//           date,
+//           totalHours,
+//           totalMinutesRemainder,
+//           breakHours,
+//           breakMinutesRemainder,
+//           officeWorkHours,
+//           officeWorkMinutesRemainder,
+//           otherHours,
+//           otherMinutesRemainder
+//         });
+//       }
+//     }
+//     const months = [
+//       'January', 'February', 'March', 'April', 'May', 'June',
+//       'July', 'August', 'September', 'October', 'November', 'December'
+//     ];
+  
+//     let monthname = '';
+//     if (month >= 1 && month <= 12) {
+//       monthname = months[month - 1]; // Months array is zero-based
+//     } else {
+//       throw new Error('Invalid month number');
+//     }
+//     console.log("Monthly Data:",monthlyData)
+//     res.render('monthly_working_hours_report', {year, monthname, monthlyData});
+//   } catch (error) {
+//     console.error("Error executing query:", error);
+//     res.status(500).send("Internal Server Error");
+//   }
+// });
 app.post('/monthly_working_hours', async (req, res) => {
   const { name, year, month } = req.body;
   const user = req.session.user;
-  const loginId = user.id;
+
+  // Find the user ID based on the provided name
+  let userId;
+  try {
+    const userQuery = `
+      SELECT id FROM login WHERE lower(name) LIKE lower($1);
+    `;
+    const userValues = [`%${name.trim()}%`];
+    const userResult = await pool.query(userQuery, userValues);
+
+    if (userResult.rows.length === 0) {
+      res.status(404).send("User not found.");
+      return;
+    }
+
+    userId = userResult.rows[0].id;
+  } catch (error) {
+    console.error("Error finding user ID:", error);
+    res.status(500).send("Internal Server Error");
+    return;
+  }
 
   const daysInMonth = new Date(year, month, 0).getDate();
-  
+
   try {
     const monthlyData = [];
-    let NAME='';
+    let NAME = '';
 
     for (let day = 1; day <= daysInMonth; day++) {
       const date = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
 
       const query = `
-        SELECT name,check_in_time, check_out_time, reason,date
+        SELECT name, check_in_time, check_out_time, reason, date
         FROM record
         WHERE (
           lower(name) LIKE lower($1) OR
@@ -501,16 +642,15 @@ app.post('/monthly_working_hours', async (req, res) => {
         AND date = $4 AND id = $5
         ORDER BY check_in_time;
       `;
-      // const values = [name, date, loginId];
       const values = [
         `%${name.split(' ')[0]}%`, // First part of the name
         `%${name.split(' ')[1]}%`, // Middle part of the name
         `%${name.split(' ')[2]}%`, // Last part of the name
         date,
-        loginId
+        userId
       ];
       const result = await pool.query(query, values);
-     
+
       if (result.rows.length > 0) {
         let totalMinutes = 0;
         let breakMinutes = 0;
@@ -520,7 +660,7 @@ app.post('/monthly_working_hours', async (req, res) => {
         for (let i = 0; i < result.rows.length; i++) {
           const row = result.rows[i];
           const checkInTime = row.check_in_time;
-          NAME=row.name;
+          NAME = row.name;
           const checkOutTime = row.check_out_time;
           const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
 
@@ -564,7 +704,7 @@ app.post('/monthly_working_hours', async (req, res) => {
 
         const otherHours = Math.floor(otherMinutes / 60);
         const otherMinutesRemainder = otherMinutes % 60;
-      
+        console.log("Name", NAME);
         monthlyData.push({
           NAME,
           date,
@@ -583,14 +723,15 @@ app.post('/monthly_working_hours', async (req, res) => {
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
-  
+
     let monthname = '';
     if (month >= 1 && month <= 12) {
       monthname = months[month - 1]; // Months array is zero-based
     } else {
       throw new Error('Invalid month number');
     }
-    res.render('monthly_working_hours_report', {year, monthname, monthlyData});
+    console.log("Monthly Data:", monthlyData);
+    res.render('monthly_working_hours_report', { year, monthname, monthlyData });
   } catch (error) {
     console.error("Error executing query:", error);
     res.status(500).send("Internal Server Error");
@@ -609,32 +750,158 @@ app.get("/daily_working_hours", async (req, res) => {
 });
 
 
+// app.post('/daily_working_hours', async (req, res) => {
+//   const { name, date } = req.body;
+//   const user = req.session.user;
+//   const loginId = user.id;
+//   let NAME=''
+//   try {
+//     const query = `
+//       SELECT name,check_in_time, check_out_time, reason
+//       FROM record
+//       WHERE (
+//           lower(name) LIKE lower($1) OR
+//           lower(name) LIKE lower($2) OR
+//           lower(name) LIKE lower($3)
+//         )
+//       AND date = $4 AND id = $5
+//       ORDER BY check_in_time;
+//     `;
+//     const values = [
+//         `%${name.split(' ')[0]}%`, // First part of the name
+//         `%${name.split(' ')[1]}%`, // Middle part of the name
+//         `%${name.split(' ')[2]}%`, // Last part of the name
+//         date,
+//         loginId
+//       ];
+    
+//     const result = await pool.query(query, values);
+//       console.log(result)
+//     if (result.rows.length === 0) {
+//       res.status(404).send("No records found for the specified date.");
+//       return;
+//     }
+
+//     let totalMinutes = 0;
+//     let breakMinutes = 0;
+//     let officeWorkMinutes = 0;
+//     let otherMinutes = 0;
+
+//     for (let i = 0; i < result.rows.length; i++) {
+//       const row = result.rows[i];
+//       const checkInTime = row.check_in_time;
+//       const checkOutTime = row.check_out_time;
+//       NAME=row.name;
+//       const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
+
+//       if (checkInTime && checkOutTime) {
+//         const checkInDateTime = new Date(`1970-01-01T${checkInTime}`);
+//         const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
+//         const diffMs = checkOutDateTime - checkInDateTime;
+//         const diffMinutes = diffMs / 1000 / 60;
+
+//         totalMinutes += diffMinutes;
+//       }
+
+//       if (checkOutTime && i < result.rows.length - 1) {
+//         const nextRow = result.rows[i + 1];
+//         const nextCheckInTime = nextRow.check_in_time;
+//         if (nextCheckInTime) {
+//           const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
+//           const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}`);
+//           const diffMs = nextCheckInDateTime - checkOutDateTime;
+//           const diffMinutes = diffMs / 1000 / 60;
+
+//           console.log(`Reason: "${reason}", Diff Minutes: ${diffMinutes}`);
+
+//           if (reason === 'break') {
+//             breakMinutes += diffMinutes;
+//             console.log("BREAK")
+//           } else if (reason.includes('office')) { // Check if reason contains "office"
+//             officeWorkMinutes += diffMinutes;
+//             console.log("OFFICE WORK")
+//           } else {
+//             otherMinutes += diffMinutes;
+//             console.log("OTHER")
+//           }
+//         }
+//       }
+//     }
+
+//     const totalHours = Math.floor(totalMinutes / 60);
+//     const totalMinutesRemainder = totalMinutes % 60;
+
+//     const breakHours = Math.floor(breakMinutes / 60);
+//     const breakMinutesRemainder = breakMinutes % 60;
+
+//     const officeWorkHours = Math.floor(officeWorkMinutes / 60);
+//     const officeWorkMinutesRemainder = officeWorkMinutes % 60;
+
+//     const otherHours = Math.floor(otherMinutes / 60);
+//     const otherMinutesRemainder = otherMinutes % 60;
+   
+
+//     res.render('daily_working_hours_report', { 
+//       NAME, 
+//       date, 
+//       totalHours, 
+//       totalMinutesRemainder, 
+//       breakHours, 
+//       breakMinutesRemainder, 
+//       officeWorkHours, 
+//       officeWorkMinutesRemainder, 
+//       otherHours, 
+//       otherMinutesRemainder 
+//     });
+//   } catch (error) {
+//     console.error("Error executing query:", error);
+//     res.status(500).send("Internal Server Error");
+//   }
+// });
 app.post('/daily_working_hours', async (req, res) => {
   const { name, date } = req.body;
   const user = req.session.user;
-  const loginId = user.id;
-  let NAME=''
+  
+  // Find the user ID based on the provided name
+  let userId;
+  try {
+    const userQuery = `
+      SELECT id FROM login WHERE lower(name) LIKE lower($1);
+    `;
+    const userValues = [`%${name.trim()}%`];
+    const userResult = await pool.query(userQuery, userValues);
+    
+    if (userResult.rows.length === 0) {
+      res.status(404).send("User not found.");
+      return;
+    }
+    
+    userId = userResult.rows[0].id;
+  } catch (error) {
+    console.error("Error finding user ID:", error);
+    res.status(500).send("Internal Server Error");
+    return;
+  }
+
   try {
     const query = `
-      SELECT name,check_in_time, check_out_time, reason
+      SELECT name, check_in_time, check_out_time, reason
       FROM record
-      WHERE (
-          lower(name) LIKE lower($1) OR
-          lower(name) LIKE lower($2) OR
-          lower(name) LIKE lower($3)
-        )
-      AND date = $4 AND id = $5
+      WHERE lower(name) LIKE lower($1)
+      AND date = $2 AND id = $3
       ORDER BY check_in_time;
     `;
     const values = [
-        `%${name.split(' ')[0]}%`, // First part of the name
-        `%${name.split(' ')[1]}%`, // Middle part of the name
-        `%${name.split(' ')[2]}%`, // Last part of the name
-        date,
-        loginId
-      ];
-    
+      `%${name.split(' ')[0]}%`, // First part of the name
+      date,
+      userId
+    ];
+
+    console.log("Query:", query);
+    console.log("Values:", values);
+
     const result = await pool.query(query, values);
+    console.log("Query Result:", result.rows);
 
     if (result.rows.length === 0) {
       res.status(404).send("No records found for the specified date.");
@@ -645,12 +912,13 @@ app.post('/daily_working_hours', async (req, res) => {
     let breakMinutes = 0;
     let officeWorkMinutes = 0;
     let otherMinutes = 0;
+    let NAME = '';
 
     for (let i = 0; i < result.rows.length; i++) {
       const row = result.rows[i];
       const checkInTime = row.check_in_time;
       const checkOutTime = row.check_out_time;
-      NAME=row.name;
+      NAME = row.name;
       const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
 
       if (checkInTime && checkOutTime) {
@@ -675,13 +943,13 @@ app.post('/daily_working_hours', async (req, res) => {
 
           if (reason === 'break') {
             breakMinutes += diffMinutes;
-            console.log("BREAK")
+            console.log("BREAK");
           } else if (reason.includes('office')) { // Check if reason contains "office"
             officeWorkMinutes += diffMinutes;
-            console.log("OFFICE WORK")
+            console.log("OFFICE WORK");
           } else {
             otherMinutes += diffMinutes;
-            console.log("OTHER")
+            console.log("OTHER");
           }
         }
       }
@@ -698,25 +966,25 @@ app.post('/daily_working_hours', async (req, res) => {
 
     const otherHours = Math.floor(otherMinutes / 60);
     const otherMinutesRemainder = otherMinutes % 60;
-   
 
-    res.render('daily_working_hours_report', { 
-      NAME, 
-      date, 
-      totalHours, 
-      totalMinutesRemainder, 
-      breakHours, 
-      breakMinutesRemainder, 
-      officeWorkHours, 
-      officeWorkMinutesRemainder, 
-      otherHours, 
-      otherMinutesRemainder 
+    res.render('daily_working_hours_report', {
+      NAME,
+      date,
+      totalHours,
+      totalMinutesRemainder,
+      breakHours,
+      breakMinutesRemainder,
+      officeWorkHours,
+      officeWorkMinutesRemainder,
+      otherHours,
+      otherMinutesRemainder
     });
   } catch (error) {
     console.error("Error executing query:", error);
     res.status(500).send("Internal Server Error");
   }
 });
+
 
 
 app.get("/check_in", async (req, res) => {
@@ -775,6 +1043,53 @@ app.get("/check_out", async (req, res) => {
     res.redirect("/");
   }
 });
+
+// app.post('/check_out', async (req, res) => {
+//   const user = req.session.user;
+//   const loginId = user.id;
+//   const { name, time, date, reason } = req.body;
+//   console.log("Time:", time);
+//   console.log("Reason:", reason);
+  
+//   try {
+   
+//     const [hours, minutes, seconds] = time.split(':');
+//     const formattedTime = `${hours}:${minutes}:${seconds}`;
+//     console.log("Formatted Time:", formattedTime);
+//     const selectQuery = `
+//       SELECT id FROM record
+//       WHERE name = $1 AND date = $2 AND id = $3 AND check_out_time IS NULL
+//       LIMIT 1;
+//     `;
+//     const selectValues = [name, date, loginId];
+    
+//     const selectResult = await pool.query(selectQuery, selectValues);
+
+//     if (selectResult.rows.length === 0) {
+//       res.status(400).send("Check-in record not found or already checked out.");
+//       return;
+//     }
+
+//     // Update query to set the check-out time and reason
+//     const updateQuery = `
+//       UPDATE record
+//       SET check_out_time = $1, reason = $2
+//       WHERE id = $3 AND date = $4 AND check_out_time IS NULL;
+//     `;
+//     console.log("Change Time:",formattedTime)
+//     const updateValues = [time, reason, loginId, date];
+
+//     await pool.query(updateQuery, updateValues);
+
+//     res.render("dashboard");
+//   } catch (error) {
+//     console.error("Error executing check-out query:", error);
+//     res.status(500).send("Internal Server Error");
+//   }
+// });
+
+////Add Employee
+
 app.post('/check_out', async (req, res) => {
   const user = req.session.user;
   const loginId = user.id;
@@ -783,10 +1098,17 @@ app.post('/check_out', async (req, res) => {
   console.log("Reason:", reason);
   
   try {
-   
     const [hours, minutes, seconds] = time.split(':');
     const formattedTime = `${hours}:${minutes}:${seconds}`;
     console.log("Formatted Time:", formattedTime);
+    
+    // Adjust time if it's greater than 19:00
+    let adjustedTime = formattedTime;
+    if (parseInt(hours) > 19 || (parseInt(hours) === 19 && parseInt(minutes) > 0)) {
+      adjustedTime = '19:00:00';
+    }
+    console.log("Adjusted Time:", adjustedTime);
+    
     const selectQuery = `
       SELECT id FROM record
       WHERE name = $1 AND date = $2 AND id = $3 AND check_out_time IS NULL
@@ -807,8 +1129,8 @@ app.post('/check_out', async (req, res) => {
       SET check_out_time = $1, reason = $2
       WHERE id = $3 AND date = $4 AND check_out_time IS NULL;
     `;
-    console.log("Change Time:",formattedTime)
-    const updateValues = [time, reason, loginId, date];
+    console.log("Change Time:",adjustedTime)
+    const updateValues = [adjustedTime, reason, loginId, date];
 
     await pool.query(updateQuery, updateValues);
 
@@ -819,7 +1141,7 @@ app.post('/check_out', async (req, res) => {
   }
 });
 
-////Add Employee
+
 app.get("/add_employee", async (req, res) => {
   user = req.session.user;
   console.log("User is:",user)
