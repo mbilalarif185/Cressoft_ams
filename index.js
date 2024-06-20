@@ -86,6 +86,16 @@ app.post("/apply_leave", async (req, res) => {
   const { start_date, end_date, reason } = req.body;
   const user_id = user.id;
 
+  // Convert dates to Date objects for comparison
+  const startDate = new Date(start_date);
+  const endDate = new Date(end_date);
+
+  // Check if the end date is before the start date
+  if (endDate < startDate) {
+    res.status(400).send("End date cannot be before start date.");
+    return;
+  }
+
   try {
     const query = `
       INSERT INTO leaves (user_id, start_date, end_date, reason)
@@ -93,18 +103,22 @@ app.post("/apply_leave", async (req, res) => {
     `;
     const values = [user_id, start_date, end_date, reason];
     await pool.query(query, values);
-    res.redirect("/view_leaves");
+    res.redirect("/leave_history");
   } catch (error) {
     console.error("Error applying for leave:", error);
     res.status(500).send("Internal Server Error");
   }
 });
-// app.get("/view_leaves", async (req, res) => {
+
+
+// app.get("/leave_history", async (req, res) => {
 //   const user = req.session.user;
+//   console.log("User session:", user);  // Debugging line
+
 //   if (user) {
 //     try {
 //       const query = `
-//         SELECT start_date, end_date, reason, status
+//         SELECT leave_id, user_id, start_date, end_date, reason, status
 //         FROM leaves
 //         WHERE user_id = $1
 //         ORDER BY start_date DESC;
@@ -112,7 +126,75 @@ app.post("/apply_leave", async (req, res) => {
 //       const values = [user.id];
 //       const result = await pool.query(query, values);
 //       const leaves = result.rows;
-//       res.render("view_leaves", { userName: user.name, leaves });
+      
+//       // Count approved and rejected leaves
+//       const approvedLeaves = leaves.filter(leave => leave.status === 'Approved').length;
+//       const rejectedLeaves = leaves.filter(leave => leave.status === 'Rejected').length;
+
+//       res.render("leave_history", { userName: user.name, leaves, approvedLeaves, rejectedLeaves });
+//     } catch (error) {
+//       console.error("Error fetching leave records:", error);
+//       res.status(500).send("Internal Server Error");
+//     }
+//   } else {
+//     res.redirect("/");
+//   }
+// });
+// app.get("/review_leaves", async (req, res) => {
+//   const user = req.session.user;
+//   console.log("User session:", user);  // Debugging line
+
+//   if (user && user.role.trim().toLowerCase() === 'developer') {
+//     try {
+//       const query = `
+//         SELECT leave_id, user_id, start_date, end_date, reason, status
+//         FROM leaves
+//         WHERE status = 'Pending'
+//         ORDER BY start_date DESC;
+//       `;
+//       const result = await pool.query(query);
+//       const leaves = result.rows;
+      
+//       // Fetch all users and their leave counts
+//       const usersQuery = `
+//         SELECT id, name FROM login
+//       `;
+//       const usersResult = await pool.query(usersQuery);
+//       const users = usersResult.rows;
+
+//       // Initialize leaveCounts object
+//       const leaveCounts = {};
+
+//       // Calculate approved and rejected leave days for each user
+//       for (let user of users) {
+//         leaveCounts[user.id] = {
+//           approvedLeaveDays: 0,
+//           rejectedLeaveDays: 0
+//         };
+
+//         const userLeavesQuery = `
+//           SELECT start_date, end_date, status
+//           FROM leaves
+//           WHERE user_id = $1
+//         `;
+//         const userLeavesValues = [user.id];
+//         const userLeavesResult = await pool.query(userLeavesQuery, userLeavesValues);
+//         const userLeaves = userLeavesResult.rows;
+
+//         userLeaves.forEach(leave => {
+//           const startDate = new Date(leave.start_date);
+//           const endDate = new Date(leave.end_date);
+//           const leaveDays = (endDate - startDate) / (1000 * 60 * 60 * 24) + 1; // Calculate total days of leave
+
+//           if (leave.status === 'Approved') {
+//             leaveCounts[user.id].approvedLeaveDays += leaveDays;
+//           } else if (leave.status === 'Rejected') {
+//             leaveCounts[user.id].rejectedLeaveDays += leaveDays;
+//           }
+//         });
+//       }
+
+//       res.render("review_leaves", { userName: user.name, leaves, users, leaveCounts });
 //     } catch (error) {
 //       console.error("Error fetching leave records:", error);
 //       res.status(500).send("Internal Server Error");
@@ -122,56 +204,6 @@ app.post("/apply_leave", async (req, res) => {
 //   }
 // });
 
-app.get("/review_leaves", async (req, res) => {
-  const user = req.session.user;
-  console.log("User session:", user);  // Debugging line
-
-  if (user && user.role.trim().toLowerCase() === 'developer') {
-    try {
-      const query = `
-        SELECT leave_id, user_id, start_date, end_date, reason, status
-        FROM leaves
-        WHERE status = 'Pending'
-        ORDER BY start_date DESC;
-      `;
-      const result = await pool.query(query);
-      const leaves = result.rows;
-      res.render("review_leaves", { userName: user.name, leaves });
-    } catch (error) {
-      console.error("Error fetching leave records:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  } else {
-    res.redirect("/");
-  }
-});
-app.get("/leave_history_admin", async (req, res) => {
-  const user = req.session.user;
-  console.log("User session:", user);  // Debugging line
-
-  if (user && user.role.trim().toLowerCase() === 'developer') {
-    try {
-      const query = `
-        SELECT login.id, login.name, 
-               SUM(CASE WHEN leaves.status = 'Approved' THEN 1 ELSE 0 END) AS approved_leaves,
-               SUM(CASE WHEN leaves.status = 'Rejected' THEN 1 ELSE 0 END) AS rejected_leaves
-        FROM login
-        LEFT JOIN leaves ON login.id = leaves.user_id
-        GROUP BY login.id, login.name
-        ORDER BY login.name;
-      `;
-      const result = await pool.query(query);
-      const leaveSummary = result.rows;
-      res.render("leave_history_admin", { userName: user.name, leaveSummary });
-    } catch (error) {
-      console.error("Error fetching leave records:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  } else {
-    res.redirect("/");
-  }
-});
-
 app.get("/leave_history", async (req, res) => {
   const user = req.session.user;
   console.log("User session:", user);  // Debugging line
@@ -179,7 +211,7 @@ app.get("/leave_history", async (req, res) => {
   if (user) {
     try {
       const query = `
-        SELECT start_date, end_date, reason, status
+        SELECT leave_id, user_id, start_date, end_date, reason, status
         FROM leaves
         WHERE user_id = $1
         ORDER BY start_date DESC;
@@ -188,11 +220,195 @@ app.get("/leave_history", async (req, res) => {
       const result = await pool.query(query, values);
       const leaves = result.rows;
       
-      // Count approved and rejected leaves
-      const approvedLeaves = leaves.filter(leave => leave.status === 'Approved').length;
-      const rejectedLeaves = leaves.filter(leave => leave.status === 'Rejected').length;
+      // Format the dates correctly and calculate approved and rejected leave days
+      let approvedLeaveDays = 0;
+      let rejectedLeaveDays = 0;
 
-      res.render("leave_history", { userName: user.name, leaves, approvedLeaves, rejectedLeaves });
+      leaves.forEach(leave => {
+        leave.start_date = new Date(leave.start_date).toLocaleDateString();
+        leave.end_date = new Date(leave.end_date).toLocaleDateString();
+        
+        const startDate = new Date(leave.start_date);
+        const endDate = new Date(leave.end_date);
+        const leaveDays = (endDate - startDate) / (1000 * 60 * 60 * 24) + 1; // Calculate total days of leave
+
+        if (leave.status === 'Approved') {
+          approvedLeaveDays += leaveDays;
+        } else if (leave.status === 'Rejected') {
+          rejectedLeaveDays += leaveDays;
+        }
+      });
+
+      res.render("leave_history", { userName: user.name, leaves, approvedLeaveDays, rejectedLeaveDays });
+    } catch (error) {
+      console.error("Error fetching leave records:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  } else {
+    res.redirect("/");
+  }
+});
+
+app.get("/review_leaves", async (req, res) => {
+  const user = req.session.user;
+  console.log("User session:", user);  // Debugging line
+
+  if (user && user.role.trim().toLowerCase() === 'developer') {
+    try {
+      const query = `
+        SELECT leaves.leave_id, leaves.user_id, leaves.start_date, leaves.end_date, leaves.reason, leaves.status, login.name
+        FROM leaves
+        JOIN login ON leaves.user_id = login.id
+        WHERE leaves.status = 'Pending'
+        ORDER BY leaves.start_date DESC;
+      `;
+      const result = await pool.query(query);
+      const leaves = result.rows;
+
+      // Format the dates correctly
+      leaves.forEach(leave => {
+        leave.start_date = new Date(leave.start_date).toLocaleDateString();
+        leave.end_date = new Date(leave.end_date).toLocaleDateString();
+      });
+
+      // Fetch all users and their leave counts
+      const usersQuery = `
+        SELECT id, name FROM login
+      `;
+      const usersResult = await pool.query(usersQuery);
+      const users = usersResult.rows;
+
+      // Initialize leaveCounts object
+      const leaveCounts = {};
+
+      // Calculate approved and rejected leave days for each user
+      for (let user of users) {
+        leaveCounts[user.id] = {
+          approvedLeaveDays: 0,
+          rejectedLeaveDays: 0
+        };
+
+        const userLeavesQuery = `
+          SELECT start_date, end_date, status
+          FROM leaves
+          WHERE user_id = $1
+        `;
+        const userLeavesValues = [user.id];
+        const userLeavesResult = await pool.query(userLeavesQuery, userLeavesValues);
+        const userLeaves = userLeavesResult.rows;
+
+        userLeaves.forEach(leave => {
+          const startDate = new Date(leave.start_date);
+          const endDate = new Date(leave.end_date);
+          const leaveDays = (endDate - startDate) / (1000 * 60 * 60 * 24) + 1; // Calculate total days of leave
+
+          if (leave.status === 'Approved') {
+            leaveCounts[user.id].approvedLeaveDays += leaveDays;
+          } else if (leave.status === 'Rejected') {
+            leaveCounts[user.id].rejectedLeaveDays += leaveDays;
+          }
+        });
+      }
+
+      res.render("review_leaves", { userName: user.name, leaves, users, leaveCounts });
+    } catch (error) {
+      console.error("Error fetching leave records:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  } else {
+    res.redirect("/");
+  }
+});
+
+
+app.get("/admin_leave_history", async (req, res) => {
+  const user = req.session.user;
+  console.log("User session:", user);  // Debugging line
+
+  if (user && user.role.trim().toLowerCase() === 'developer') {
+    res.render("select_admin_leave_history", { userName: user.name });
+  } else {
+    res.redirect("/");
+  }
+});
+// app.post("/admin_leave_history", async (req, res) => {
+//   const user = req.session.user;
+//   const { year, month } = req.body;
+//   console.log("User session:", user);  // Debugging line
+
+//   if (user && user.role.trim().toLowerCase() === 'developer') {
+//     try {
+//       const query = `
+//         SELECT login.name, leaves.start_date, leaves.end_date, leaves.reason, leaves.status
+//         FROM leaves
+//         JOIN login ON leaves.user_id = login.id
+//         WHERE EXTRACT(YEAR FROM leaves.start_date) = $1
+//         AND EXTRACT(MONTH FROM leaves.start_date) = $2
+//         ORDER BY leaves.start_date DESC;
+//       `;
+//       const values = [year, month];
+//       const result = await pool.query(query, values);
+//       const leaves = result.rows;
+//       res.render("monthly_admin_leave_history", { userName: user.name, leaves, year, month });
+//     } catch (error) {
+//       console.error("Error fetching leave records:", error);
+//       res.status(500).send("Internal Server Error");
+//     }
+//   } else {
+//     res.redirect("/");
+//   }
+// });
+
+app.post("/admin_leave_history", async (req, res) => {
+  const user = req.session.user;
+  const { year, month } = req.body;
+  console.log("User session:", user);  // Debugging line
+
+  if (user && user.role.trim().toLowerCase() === 'developer') {
+    try {
+      const query = `
+        SELECT login.name, 
+               to_char(leaves.start_date, 'YYYY-MM-DD') AS start_date, 
+               to_char(leaves.end_date, 'YYYY-MM-DD') AS end_date, 
+               leaves.reason, leaves.status
+        FROM leaves
+        JOIN login ON leaves.user_id = login.id
+        WHERE EXTRACT(YEAR FROM leaves.start_date) = $1
+        AND EXTRACT(MONTH FROM leaves.start_date) = $2
+        ORDER BY leaves.start_date DESC;
+      `;
+      const values = [year, month];
+      const result = await pool.query(query, values);
+      const leaves = result.rows;
+      res.render("monthly_admin_leave_history", { userName: user.name, leaves, year, month });
+    } catch (error) {
+      console.error("Error fetching leave records:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  } else {
+    res.redirect("/");
+  }
+});
+
+
+app.get("/leave_history_admin", async (req, res) => {
+  const user = req.session.user;
+  console.log("User session:", user);  // Debugging line
+
+  if (user && user.role.trim().toLowerCase() === 'developer') {
+    try {
+      const query = `
+        SELECT login.id, login.name,
+               COALESCE(SUM(CASE WHEN leaves.status = 'Approved' THEN (leaves.end_date - leaves.start_date + 1) ELSE 0 END), 0) AS approved_leave_days,
+               COALESCE(SUM(CASE WHEN leaves.status = 'Rejected' THEN (leaves.end_date - leaves.start_date + 1) ELSE 0 END), 0) AS rejected_leave_days
+        FROM login
+        LEFT JOIN leaves ON login.id = leaves.user_id
+        GROUP BY login.id, login.name
+        ORDER BY login.name;
+      `;
+      const result = await pool.query(query);
+      const leaveSummary = result.rows;
+      res.render("leave_history_admin", { userName: user.name, leaveSummary });
     } catch (error) {
       console.error("Error fetching leave records:", error);
       res.status(500).send("Internal Server Error");

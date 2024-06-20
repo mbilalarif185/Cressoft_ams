@@ -6,24 +6,40 @@ html
     include header1.pug
     header
       h1.center.scaps Review Leave Applications
-        div.table-container
-          table.table-bordered
-            thead
+      div.table-container
+        table.table-bordered
+          thead
+            tr
+              th Employee
+              th Start Date
+              th End Date
+              th Reason
+              th Status
+              th Actions
+          tbody
+            each leave in leaves
               tr
-                th Start Date
-                th End Date
-                th Reason
-                th Status
-                th Actions
-            tbody
-              each leave in leaves
-                tr
-                  td= leave.start_date
-                  td= leave.end_date
-                  td= leave.reason
-                  td= leave.status
-                  td
-                    form(action="/update_leave_status", method="POST")
-                      input(type="hidden", name="leave_id", value=leave.leave_id)
-                      button(type="submit", name="status", value="Approved") Approve
-                      button(type="submit", name="status", value="Rejected") Reject
+                td= leave.name.trim()
+                td= leave.start_date
+                td= leave.end_date
+                td= leave.reason
+                td= leave.status
+                td
+                  form(action="/update_leave_status", method="POST")
+                    input(type="hidden", name="leave_id", value=leave.leave_id)
+                    button(type="submit", name="status", value="Approved") Approve
+                    button(type="submit", name="status", value="Rejected") Reject
+      h2 Employee Leave Summary
+      div.table-container
+        table.table-bordered
+          thead
+            tr
+              th Employee
+              th Approved Leave Days
+              th Rejected Leave Days
+          tbody
+            each user in users
+              tr
+                td= user.name.trim()
+                td= leaveCounts[user.id].approvedLeaveDays
+                td= leaveCounts[user.id].rejectedLeaveDays
