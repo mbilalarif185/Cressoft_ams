@@ -220,10 +220,10 @@ app.post('/daily_working_hours', async (req, res) => {
   const { name, date } = req.body;
   const user = req.session.user;
   const loginId = user.id;
-
+  let NAME=''
   try {
     const query = `
-      SELECT check_in_time, check_out_time, reason
+      SELECT name,check_in_time, check_out_time, reason
       FROM record
       WHERE (
           lower(name) LIKE lower($1) OR
@@ -257,6 +257,7 @@ app.post('/daily_working_hours', async (req, res) => {
       const row = result.rows[i];
       const checkInTime = row.check_in_time;
       const checkOutTime = row.check_out_time;
+      NAME=row.name;
       const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
 
       if (checkInTime && checkOutTime) {
@@ -304,9 +305,10 @@ app.post('/daily_working_hours', async (req, res) => {
 
     const otherHours = Math.floor(otherMinutes / 60);
     const otherMinutesRemainder = otherMinutes % 60;
-
+   
+    
     res.render('daily_working_hours_report', { 
-      name, 
+      NAME, 
       date, 
       totalHours, 
       totalMinutesRemainder, 
