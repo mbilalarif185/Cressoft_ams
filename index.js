@@ -56,7 +56,7 @@ app.post("/loginAction", async (req, res) => {
       } else if (user.role.toLowerCase().trim() === "content writer") {
         req.session.user = user;
         res.render("dashboard", { user: user });
-      } else if (user.role.toLowerCase().trim() === "ai") {
+      } else if (user.role.toLowerCase().trim() === "intern") {
         req.session.user = user;
         res.render("dashboard", { user: user });
       } else {
@@ -72,6 +72,155 @@ app.post("/loginAction", async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
+///leave management system
+app.get("/apply_leave", (req, res) => {
+  const user = req.session.user;
+  if (user) {
+    res.render("apply_leave", { userName: user.name });
+  } else {
+    res.redirect("/");
+  }
+});
+app.post("/apply_leave", async (req, res) => {
+  const user = req.session.user;
+  const { start_date, end_date, reason } = req.body;
+  const user_id = user.id;
+
+  try {
+    const query = `
+      INSERT INTO leaves (user_id, start_date, end_date, reason)
+      VALUES ($1, $2, $3, $4);
+    `;
+    const values = [user_id, start_date, end_date, reason];
+    await pool.query(query, values);
+    res.redirect("/view_leaves");
+  } catch (error) {
+    console.error("Error applying for leave:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+// app.get("/view_leaves", async (req, res) => {
+//   const user = req.session.user;
+//   if (user) {
+//     try {
+//       const query = `
+//         SELECT start_date, end_date, reason, status
+//         FROM leaves
+//         WHERE user_id = $1
+//         ORDER BY start_date DESC;
+//       `;
+//       const values = [user.id];
+//       const result = await pool.query(query, values);
+//       const leaves = result.rows;
+//       res.render("view_leaves", { userName: user.name, leaves });
+//     } catch (error) {
+//       console.error("Error fetching leave records:", error);
+//       res.status(500).send("Internal Server Error");
+//     }
+//   } else {
+//     res.redirect("/");
+//   }
+// });
+
+app.get("/review_leaves", async (req, res) => {
+  const user = req.session.user;
+  console.log("User session:", user);  // Debugging line
+
+  if (user && user.role.trim().toLowerCase() === 'developer') {
+    try {
+      const query = `
+        SELECT leave_id, user_id, start_date, end_date, reason, status
+        FROM leaves
+        WHERE status = 'Pending'
+        ORDER BY start_date DESC;
+      `;
+      const result = await pool.query(query);
+      const leaves = result.rows;
+      res.render("review_leaves", { userName: user.name, leaves });
+    } catch (error) {
+      console.error("Error fetching leave records:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  } else {
+    res.redirect("/");
+  }
+});
+app.get("/leave_history_admin", async (req, res) => {
+  const user = req.session.user;
+  console.log("User session:", user);  // Debugging line
+
+  if (user && user.role.trim().toLowerCase() === 'developer') {
+    try {
+      const query = `
+        SELECT login.id, login.name, 
+               SUM(CASE WHEN leaves.status = 'Approved' THEN 1 ELSE 0 END) AS approved_leaves,
+               SUM(CASE WHEN leaves.status = 'Rejected' THEN 1 ELSE 0 END) AS rejected_leaves
+        FROM login
+        LEFT JOIN leaves ON login.id = leaves.user_id
+        GROUP BY login.id, login.name
+        ORDER BY login.name;
+      `;
+      const result = await pool.query(query);
+      const leaveSummary = result.rows;
+      res.render("leave_history_admin", { userName: user.name, leaveSummary });
+    } catch (error) {
+      console.error("Error fetching leave records:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  } else {
+    res.redirect("/");
+  }
+});
+
+app.get("/leave_history", async (req, res) => {
+  const user = req.session.user;
+  console.log("User session:", user);  // Debugging line
+
+  if (user) {
+    try {
+      const query = `
+        SELECT start_date, end_date, reason, status
+        FROM leaves
+        WHERE user_id = $1
+        ORDER BY start_date DESC;
+      `;
+      const values = [user.id];
+      const result = await pool.query(query, values);
+      const leaves = result.rows;
+      
+      // Count approved and rejected leaves
+      const approvedLeaves = leaves.filter(leave => leave.status === 'Approved').length;
+      const rejectedLeaves = leaves.filter(leave => leave.status === 'Rejected').length;
+
+      res.render("leave_history", { userName: user.name, leaves, approvedLeaves, rejectedLeaves });
+    } catch (error) {
+      console.error("Error fetching leave records:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  } else {
+    res.redirect("/");
+  }
+});
+
+
+app.post("/update_leave_status", async (req, res) => {
+  const { leave_id, status } = req.body;
+
+  try {
+    const query = `
+      UPDATE leaves
+      SET status = $1
+      WHERE leave_id = $2;
+    `;
+    const values = [status, leave_id];
+    await pool.query(query, values);
+    res.redirect("/review_leaves");
+  } catch (error) {
+    console.error("Error updating leave status:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
 //monthly
 app.get("/monthly_working_hours", async (req, res) => {
   user = req.session.user;
@@ -306,7 +455,7 @@ app.post('/daily_working_hours', async (req, res) => {
     const otherHours = Math.floor(otherMinutes / 60);
     const otherMinutesRemainder = otherMinutes % 60;
    
-    
+
     res.render('daily_working_hours_report', { 
       NAME, 
       date, 

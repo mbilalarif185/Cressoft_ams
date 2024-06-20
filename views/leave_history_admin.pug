@@ -1,0 +1,21 @@
+html
+  head
+    title AMS
+    link(rel='stylesheet', href='/invoice.css')
+  body
+    include header1.pug
+    header
+      h1.center.scaps Leave History (Admin)
+        div.table-container
+            table.table-bordered
+                thead
+                tr
+                    th Employee Name
+                    th Approved Leaves
+                    th Rejected Leaves
+                tbody
+                each summary in leaveSummary
+                    tr
+                    td= summary.name.trim()
+                    td= summary.approved_leaves
+                    td= summary.rejected_leaves

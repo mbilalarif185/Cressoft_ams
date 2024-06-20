@@ -1,0 +1,25 @@
+html
+  head
+    title AMS
+    link(rel='stylesheet', href='/invoice.css')
+  body
+    include header1.pug
+    header
+      h1.center.scaps Leaves History
+    p Approved Leaves: #{approvedLeaves}
+    p Rejected Leaves: #{rejectedLeaves}
+        div.table-container
+            table.table-bordered
+                thead
+                tr
+                    th Start Date
+                    th End Date
+                    th Reason
+                    th Status
+                tbody
+                each leave in leaves
+                    tr
+                    td= leave.start_date
+                    td= leave.end_date
+                    td= leave.reason
+                    td= leave.status

@@ -1,0 +1,29 @@
+html
+  head
+    title AMS
+    link(rel='stylesheet', href='/invoice.css')
+  body
+    include header1.pug
+    header
+      h1.center.scaps Review Leave Applications
+        div.table-container
+          table.table-bordered
+            thead
+              tr
+                th Start Date
+                th End Date
+                th Reason
+                th Status
+                th Actions
+            tbody
+              each leave in leaves
+                tr
+                  td= leave.start_date
+                  td= leave.end_date
+                  td= leave.reason
+                  td= leave.status
+                  td
+                    form(action="/update_leave_status", method="POST")
+                      input(type="hidden", name="leave_id", value=leave.leave_id)
+                      button(type="submit", name="status", value="Approved") Approve
+                      button(type="submit", name="status", value="Rejected") Reject

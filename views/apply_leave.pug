@@ -1,0 +1,20 @@
+html
+  head
+    title AMS
+    link(rel='stylesheet', href='/invoice.css')
+  body
+    include header1.pug
+    header
+      h1.center.scaps Apply for Leave
+      form(action="/apply_leave", method="POST")
+        div
+          label(for="start_date") Start Date:
+          input(type="date", name="start_date", required)
+        div
+          label(for="end_date") End Date:
+          input(type="date", name="end_date", required)
+        div
+          label(for="reason") Reason:
+          textarea(name="reason", required)
+        div
+          button(type="submit") Apply
