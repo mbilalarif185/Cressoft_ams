@@ -670,6 +670,43 @@ app.get("/check_in", async (req, res) => {
     res.redirect("/");
   }
 });
+// app.post('/check_in', async (req, res) => {
+//   const { name, date, location, time } = req.body;
+//   const user = req.session.user;
+//   const loginId = user.id;
+//   const type = 'IN';
+//   const reason = ''; // Set a reason if needed
+
+//   try {
+//     // Check if the user has any unchecked-out record for the given date
+//     const checkQuery = `
+//       SELECT id FROM record
+//       WHERE name = $1 AND date = $2 AND id = $3 AND check_out_time IS NULL
+//       LIMIT 1;
+//     `;
+//     const checkValues = [name, date, loginId];
+
+//     const checkResult = await pool.query(checkQuery, checkValues);
+
+//     if (checkResult.rows.length > 0) {
+//       res.status(400).send("Cannot check in. You have an existing session that hasn't been checked out.");
+//       return;
+//     }
+
+//     // Insert the check-in time into the record table
+//     const insertQuery = `
+//       INSERT INTO record(name, check_in_time, date, id, type, reason, location)
+//       VALUES ($1, $2, $3, $4, $5, $6, $7)
+//     `;
+//     const insertValues = [name, time, date, loginId, type, reason, location];
+
+//     await pool.query(insertQuery, insertValues);
+//     res.render("dashboard");
+//   } catch (error) {
+//     console.error("Error executing check-in query:", error);
+//     res.status(500).send("Internal Server Error");
+//   }
+// });
 app.post('/check_in', async (req, res) => {
   const { name, date, location, time } = req.body;
   const user = req.session.user;
@@ -678,6 +715,16 @@ app.post('/check_in', async (req, res) => {
   const reason = ''; // Set a reason if needed
 
   try {
+    // Convert check-in time to a Date object
+    const checkInTime = new Date(`1970-01-01T${time}Z`);
+    const cutoffTime = new Date('1970-01-01T19:00:00Z');
+
+    // Check if the check-in time is after 19:00
+    if (checkInTime > cutoffTime) {
+      res.status(400).send("Cannot check in after 19:00.");
+      return;
+    }
+
     // Check if the user has any unchecked-out record for the given date
     const checkQuery = `
       SELECT id FROM record
@@ -707,6 +754,7 @@ app.post('/check_in', async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
+
 
 app.get("/check_out", async (req, res) => {
   user = req.session.user;
