@@ -2,6 +2,12 @@ body{
   display: flex;
   justify-content: center;
   align-items: center;
+  background-image: url('./static/images/it.jpg');
+  background-size: cover; /* Adjusts the size of the image */
+  background-position: center center; /* Centers the image */
+  background-repeat: no-repeat; /* Prevents the image from repeating */
+  background-color: #f4f4f4;
+  background-attachment: fixed;
 }
 
 .loginform{

@@ -1,8 +1,13 @@
 body {
-  background-color: #f5f5f5;
   padding: 0% 6%;
   
   font-family: 'Arial', sans-serif;
+  background-image: url('./static/images/it.jpg');
+  background-size: cover; /* Adjusts the size of the image */
+  background-position: center center; /* Centers the image */
+  background-repeat: no-repeat; /* Prevents the image from repeating */
+  background-color: #f4f4f4;
+  background-attachment: fixed;
 }
 
 .loginform {

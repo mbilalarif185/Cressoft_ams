@@ -2,7 +2,12 @@ body {
   font-family: 'Arial', sans-serif;
   margin: 0;
   padding: 0;
+  background-image: url('./static/images/image2.jpg');
+  background-size: cover; /* Adjusts the size of the image */
+  background-position: center center; /* Centers the image */
+  background-repeat: no-repeat; /* Prevents the image from repeating */
   background-color: #f4f4f4;
+  background-attachment: fixed;
 }
 
 .table-bordered {
