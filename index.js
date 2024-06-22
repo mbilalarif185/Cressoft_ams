@@ -371,36 +371,31 @@ app.get("/employee_monthly_report", async (req, res) => {
     res.redirect("/");
   }
 });
-
 app.post('/employee_monthly_report', async (req, res) => {
   const user = req.session.user;
   const { name, year, month } = req.body;
 
   async function generateUserReportByNameAndMonth(name, year, month) {
     try {
-      const query = `
+      // Split the name into parts
+      const nameParts = name.split(' ').filter(part => part.trim() !== '');
+      let query = `
         SELECT name, check_in_time, check_out_time, date, type, reason, location
         FROM record
-        WHERE (
-          lower(name) LIKE lower($1) OR
-          lower(name) LIKE lower($2) OR
-          lower(name) LIKE lower($3)
-        )
-        AND EXTRACT(YEAR FROM date) = $4
-        AND EXTRACT(MONTH FROM date) = $5
-        ORDER BY date, check_in_time;
+        WHERE date_part('year', date) = $1
+        AND date_part('month', date) = $2
       `;
-  
-      const values = [
-        `%${name.split(' ')[0]}%`, // First part of the name
-        `%${name.split(' ')[1]}%`, // Middle part of the name
-        `%${name.split(' ')[2]}%`, // Last part of the name
-        year,
-        month
-      ]; // Use % for wildcard matching
+
+      const values = [year, month];
+      nameParts.forEach((part, index) => {
+        query += ` AND lower(name) ILIKE lower($${index + 3})`;
+        values.push(`%${part}%`);
+      });
+
+      query += ' ORDER BY date, check_in_time';
 
       const result = await pool.query(query, values);
-  
+
       return result.rows; // Return the rows from the query result
     } catch (error) {
       console.error('Error generating user report:', error);
@@ -419,20 +414,21 @@ app.post('/employee_monthly_report', async (req, res) => {
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
-  
+
     let monthname = '';
     if (month >= 1 && month <= 12) {
       monthname = months[month - 1]; // Months array is zero-based
     } else {
       throw new Error('Invalid month number');
     }
-    
+
     res.render('employee_monthly_attendance', { user, reportData, monthname, year });
   } catch (error) {
     console.error('Error generating user report:', error);
     res.status(500).send('Error generating user report');
   }
 });
+
 
 /// Individual EMployee Daily Attendance
 app.get("/employee_daily_attendance", async (req, res) => {
@@ -444,54 +440,54 @@ app.get("/employee_daily_attendance", async (req, res) => {
     res.redirect("/");
   }
 });
-app.post('/daily_employee_attendance', async (req, res) => {
+
+app.post('/employee_daily_attendance', async (req, res) => {
   const user = req.session.user;
   const { name, date } = req.body;
-  let day='2024-04-16'
-  async function generateUserReportByNameAndMonth(name, year, month) {
-    try {
-      const query = `
-        SELECT name, check_in_time, check_out_time, date,reason, location
-        FROM record
-        WHERE (
-          lower(name) LIKE lower($1) OR
-          lower(name) LIKE lower($2) OR
-          lower(name) LIKE lower($3)
-        )
-        AND date::date= $4::date
-        ORDER BY date, check_in_time;
-      `;
   
-      const values = [
-        `%${name.split(' ')[0]}%`, // First part of the name
-        `%${name.split(' ')[1]}%`, // Middle part of the name
-        `%${name.split(' ')[2]}%`, // Last part of the name
-          date
-      ]; // Use % for wildcard matching
+  console.log("Name:", name);
+
+  async function generateUserReportByNameAndDate(name, date) {
+    try {
+      // Split the name into parts
+      const nameParts = name.split(' ').filter(part => part.trim() !== '');
+      let query = `
+        SELECT name, check_in_time, check_out_time, date, reason, location
+        FROM record
+        WHERE date::date = $1::date
+      `;
+
+      const values = [date];
+      nameParts.forEach((part, index) => {
+        query += ` AND lower(name) ILIKE lower($${index + 2})`;
+        values.push(`%${part}%`);
+      });
+
+      query += ' ORDER BY date, check_in_time';
 
       const result = await pool.query(query, values);
-  
+
       return result.rows; // Return the rows from the query result
     } catch (error) {
       console.error('Error generating user report:', error);
       throw error; // Throw the error for handling in the caller function
     }
   }
+
   try {
-    const reportData = await generateUserReportByNameAndMonth(name,date);
+    const reportData = await generateUserReportByNameAndDate(name, date);
 
     reportData.forEach((record) => {
       record.date = new Date(record.date).toDateString().slice(0, 10);
     });
 
-    
-    
-    res.render('employee_oneday_report', { user, reportData,date });
+    res.render('employee_oneday_report', { user, reportData, date });
   } catch (error) {
     console.error('Error generating user report:', error);
     res.status(500).send('Error generating user report');
   }
 });
+
 ///leave management system
 app.get("/apply_leave", (req, res) => {
   const user = req.session.user;

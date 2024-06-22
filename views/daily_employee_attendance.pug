@@ -18,7 +18,7 @@ body
   include header1.pug
   h2.center.scaps Dear #{userName} fill the details
   br
-  form(method='post' action='/daily_employee_attendance' class='' onsubmit='return validateDate();')
+  form(method='post' action='/employee_daily_attendance' class='' onsubmit='return validateDate();')
     label(for='name') Name:
     input(type='text', name='name',required=true,value=userName, readonly)
     label(for="date") Date:

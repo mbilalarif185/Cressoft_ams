@@ -3,7 +3,7 @@ head
   link(rel='stylesheet', href='/style.css')
 body
   include header1.pug
-  h2.center.scaps {userName} Fill the Form to check Your Daily Working Hours
+  h2.center.scaps #{userName} Fill the Form to check Your Daily Working Hours
   br
   // In your existing Pug template (e.g., dashboard.pug)
 form(method="post", action="/employee_working_hours")
