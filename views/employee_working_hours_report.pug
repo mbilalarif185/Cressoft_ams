@@ -1,0 +1,55 @@
+html(lang="en")
+  head
+    meta(charset="utf-8")
+    meta(name="viewport", content="width=device-width, initial-scale=1.0")
+    link(rel='stylesheet', href='/invoice.css')
+    title Cressoft AMS Daily Attendance Report
+  body
+    include header1.pug
+    div.table-container
+      h1 #{NAME} Your Working Hours Report for #{date}
+      table.table-bordered
+        thead
+          tr
+            th Metric
+            th Hours
+            th Minutes
+        tbody
+          tr
+            td Total Working Hours
+            td= totalHours
+            td= totalMinutesRemainder
+          tr
+            td Break Time
+            td= breakHours
+            td= breakMinutesRemainder
+          tr
+            td Office Work Time
+            td= officeWorkHours
+            td= officeWorkMinutesRemainder
+          tr
+            td Other Time
+            td= otherHours
+            td= otherMinutesRemainder
+      .button-container
+        button.downloadBtn(type="button") Download as PDF
+
+    // Script to handle PDF download
+    script(src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.js")
+    script.
+      document.addEventListener('DOMContentLoaded', function () {
+        const downloadButton = document.querySelector('.downloadBtn');
+
+        downloadButton.addEventListener('click', function () {
+          try {
+            const tableContainer = document.querySelector('.table-container');
+            const excludedElements = tableContainer.querySelectorAll('.button-container');
+            excludedElements.forEach(element => element.remove());
+
+            html2pdf().from(tableContainer).save();
+          } catch (error) {
+            console.error('Error generating PDF:', error);
+            alert('An error occurred while generating the PDF.');
+          }
+        });
+      });

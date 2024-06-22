@@ -5,8 +5,7 @@ body
   include header1.pug
   h2.center.scaps Fill the Form to check Your Employee's Working Hours
   br
-  // In your existing Pug template (e.g., dashboard.pug)
 form(method="post", action="/daily_working_hours")
-  input(type="text", name="name", placeholder="Employee Name", required)
-  input(type="date", name="date", required)
+  input(type="text", name="name", placeholder="Employee Name" required=true)
+  input(type="date", name="date", required=true)
   button(type="submit") Get Daily Working Hours

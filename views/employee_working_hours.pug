@@ -1,0 +1,12 @@
+head
+  title Cressoft AMS Daily Working Hours
+  link(rel='stylesheet', href='/style.css')
+body
+  include header1.pug
+  h2.center.scaps {userName} Fill the Form to check Your Daily Working Hours
+  br
+  // In your existing Pug template (e.g., dashboard.pug)
+form(method="post", action="/employee_working_hours")
+  input(type="text", name="name",required=true,value=userName, readonly)
+  input(type="date", name="date", required=true)
+  button(type="submit") Get Daily Working Hours
