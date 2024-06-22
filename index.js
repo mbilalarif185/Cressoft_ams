@@ -73,6 +73,137 @@ app.post("/loginAction", async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
+//Employee Monthly Attendnace
+app.get("/employee_monthly_report", async (req, res) => {
+  user = req.session.user;
+  console.log(user)
+  if (user) {
+    res.render("employee_monthly_report", { userName: user.name });
+  } else {
+    res.redirect("/");
+  }
+});
+
+app.post('/employee_monthly_report', async (req, res) => {
+  const user = req.session.user;
+  const { name, year, month } = req.body;
+
+  async function generateUserReportByNameAndMonth(name, year, month) {
+    try {
+      const query = `
+        SELECT name, check_in_time, check_out_time, date, type, reason, location
+        FROM record
+        WHERE (
+          lower(name) LIKE lower($1) OR
+          lower(name) LIKE lower($2) OR
+          lower(name) LIKE lower($3)
+        )
+        AND EXTRACT(YEAR FROM date) = $4
+        AND EXTRACT(MONTH FROM date) = $5
+        ORDER BY date, check_in_time;
+      `;
+  
+      const values = [
+        `%${name.split(' ')[0]}%`, // First part of the name
+        `%${name.split(' ')[1]}%`, // Middle part of the name
+        `%${name.split(' ')[2]}%`, // Last part of the name
+        year,
+        month
+      ]; // Use % for wildcard matching
+
+      const result = await pool.query(query, values);
+  
+      return result.rows; // Return the rows from the query result
+    } catch (error) {
+      console.error('Error generating user report:', error);
+      throw error; // Throw the error for handling in the caller function
+    }
+  }
+
+  try {
+    const reportData = await generateUserReportByNameAndMonth(name, year, month);
+
+    reportData.forEach((record) => {
+      record.date = new Date(record.date).toDateString().slice(0, 10);
+    });
+
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+  
+    let monthname = '';
+    if (month >= 1 && month <= 12) {
+      monthname = months[month - 1]; // Months array is zero-based
+    } else {
+      throw new Error('Invalid month number');
+    }
+    
+    res.render('employee_monthly_attendance', { user, reportData, monthname, year });
+  } catch (error) {
+    console.error('Error generating user report:', error);
+    res.status(500).send('Error generating user report');
+  }
+});
+
+/// EMployee Daily Attendance
+app.get("/employee_daily_attendance", async (req, res) => {
+  user = req.session.user;
+  console.log(user)
+  if (user) {
+    res.render("daily_employee_attendance", { userName: user.name });
+  } else {
+    res.redirect("/");
+  }
+});
+app.post('/daily_employee_attendance', async (req, res) => {
+  const user = req.session.user;
+  const { name, date } = req.body;
+  let day='2024-04-16'
+  async function generateUserReportByNameAndMonth(name, year, month) {
+    try {
+      const query = `
+        SELECT name, check_in_time, check_out_time, date,reason, location
+        FROM record
+        WHERE (
+          lower(name) LIKE lower($1) OR
+          lower(name) LIKE lower($2) OR
+          lower(name) LIKE lower($3)
+        )
+        AND date::date= $4::date
+        ORDER BY date, check_in_time;
+      `;
+  
+      const values = [
+        `%${name.split(' ')[0]}%`, // First part of the name
+        `%${name.split(' ')[1]}%`, // Middle part of the name
+        `%${name.split(' ')[2]}%`, // Last part of the name
+          date
+      ]; // Use % for wildcard matching
+
+      const result = await pool.query(query, values);
+  
+      return result.rows; // Return the rows from the query result
+    } catch (error) {
+      console.error('Error generating user report:', error);
+      throw error; // Throw the error for handling in the caller function
+    }
+  }
+  try {
+    const reportData = await generateUserReportByNameAndMonth(name,date);
+
+    reportData.forEach((record) => {
+      record.date = new Date(record.date).toDateString().slice(0, 10);
+    });
+
+    
+    
+    res.render('employee_oneday_report', { user, reportData,date });
+  } catch (error) {
+    console.error('Error generating user report:', error);
+    res.status(500).send('Error generating user report');
+  }
+});
 ///leave management system
 app.get("/apply_leave", (req, res) => {
   const user = req.session.user;
@@ -855,16 +986,6 @@ app.post('/add_employee', async (req, res) => {
 });
 
 
-app.get("/report", async (req, res) => {
-  user = req.session.user;
-  console.log(user)
-  if (user) {
-    res.render("report");
-  } else {
-    res.redirect("/");
-  }
-});
-
 app.get("/daily_report", async (req, res) => {
   user = req.session.user;
   console.log(user)
@@ -924,6 +1045,17 @@ app.post('/daily_report', async (req, res) => {
 });
 
 // // // Report route
+
+app.get("/report", async (req, res) => {
+  user = req.session.user;
+  console.log(user)
+  if (user) {
+    res.render("report");
+  } else {
+    res.redirect("/");
+  }
+});
+
 app.post('/report', async (req, res) => {
   const user = req.session.user;
   const { name, year, month } = req.body;
