@@ -235,6 +235,134 @@ app.get("/employee_working_hours", async (req, res) => {
     res.redirect("/");
   }
 });
+
+// app.post('/employee_working_hours', async (req, res) => {
+//   const { name, date } = req.body;
+//   const user = req.session.user;
+  
+//   // Find the user ID based on the provided name
+//   let userId;
+//   try {
+//     const userQuery = `
+//       SELECT id FROM login WHERE lower(name) LIKE lower($1);
+//     `;
+//     const userValues = [`%${name.trim()}%`];
+//     const userResult = await pool.query(userQuery, userValues);
+    
+//     if (userResult.rows.length === 0) {
+//       res.status(404).send("User not found.");
+//       return;
+//     }
+    
+//     userId = userResult.rows[0].id;
+//   } catch (error) {
+//     console.error("Error finding user ID:", error);
+//     res.status(500).send("Internal Server Error");
+//     return;
+//   }
+
+//   try {
+//     const query = `
+//       SELECT name, check_in_time, check_out_time, reason
+//       FROM record
+//       WHERE lower(name) LIKE lower($1)
+//       AND date = $2 AND id = $3
+//       ORDER BY check_in_time;
+//     `;
+//     const values = [
+//       `%${name.split(' ')[0]}%`, // First part of the name
+//       date,
+//       userId
+//     ];
+
+//     console.log("Query:", query);
+//     console.log("Values:", values);
+
+//     const result = await pool.query(query, values);
+//     console.log("Query Result:", result.rows);
+
+//     if (result.rows.length === 0) {
+//       res.status(404).send("No records found for the specified date.");
+//       return;
+//     }
+
+//     let totalMinutes = 0;
+//     let breakMinutes = 0;
+//     let officeWorkMinutes = 0;
+//     let otherMinutes = 0;
+//     let NAME = '';
+
+//     for (let i = 0; i < result.rows.length; i++) {
+//       const row = result.rows[i];
+//       const checkInTime = row.check_in_time;
+//       const checkOutTime = row.check_out_time;
+//       NAME = row.name;
+//       const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
+
+//       if (checkInTime && checkOutTime) {
+//         const checkInDateTime = new Date(`1970-01-01T${checkInTime}`);
+//         const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
+//         const diffMs = checkOutDateTime - checkInDateTime;
+//         const diffMinutes = diffMs / 1000 / 60;
+
+//         totalMinutes += diffMinutes;
+//       }
+
+//       if (checkOutTime && i < result.rows.length - 1) {
+//         const nextRow = result.rows[i + 1];
+//         const nextCheckInTime = nextRow.check_in_time;
+//         if (nextCheckInTime) {
+//           const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
+//           const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}`);
+//           const diffMs = nextCheckInDateTime - checkOutDateTime;
+//           const diffMinutes = diffMs / 1000 / 60;
+
+//           console.log(`Reason: "${reason}", Diff Minutes: ${diffMinutes}`);
+
+//           if (reason === 'break') {
+//             breakMinutes += diffMinutes;
+//             console.log("BREAK");
+//           } else if (reason.includes('office')) { // Check if reason contains "office"
+//             officeWorkMinutes += diffMinutes;
+//             console.log("OFFICE WORK");
+//           } else {
+//             otherMinutes += diffMinutes;
+//             console.log("OTHER");
+//           }
+//         }
+//       }
+//     }
+
+//     const totalHours = Math.floor(totalMinutes / 60);
+//     const totalMinutesRemainder = totalMinutes % 60;
+
+//     const breakHours = Math.floor(breakMinutes / 60);
+//     const breakMinutesRemainder = breakMinutes % 60;
+
+//     const officeWorkHours = Math.floor(officeWorkMinutes / 60);
+//     const officeWorkMinutesRemainder = officeWorkMinutes % 60;
+
+//     const otherHours = Math.floor(otherMinutes / 60);
+//     const otherMinutesRemainder = otherMinutes % 60;
+
+//     res.render('employee_working_hours_report', {
+//       NAME,
+//       date,
+//       totalHours,
+//       totalMinutesRemainder,
+//       breakHours,
+//       breakMinutesRemainder,
+//       officeWorkHours,
+//       officeWorkMinutesRemainder,
+//       otherHours,
+//       otherMinutesRemainder
+//     });
+//   } catch (error) {
+//     console.error("Error executing query:", error);
+//     res.status(500).send("Internal Server Error");
+//   }
+// });
+//Individual Employee Monthly Attendnace
 app.post('/employee_working_hours', async (req, res) => {
   const { name, date } = req.body;
   const user = req.session.user;
@@ -290,6 +418,7 @@ app.post('/employee_working_hours', async (req, res) => {
     let officeWorkMinutes = 0;
     let otherMinutes = 0;
     let NAME = '';
+    const shiftEndTime = new Date('1970-01-01T19:00:00Z');
 
     for (let i = 0; i < result.rows.length; i++) {
       const row = result.rows[i];
@@ -299,8 +428,8 @@ app.post('/employee_working_hours', async (req, res) => {
       const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
 
       if (checkInTime && checkOutTime) {
-        const checkInDateTime = new Date(`1970-01-01T${checkInTime}`);
-        const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
+        const checkInDateTime = new Date(`1970-01-01T${checkInTime}Z`);
+        const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
         const diffMs = checkOutDateTime - checkInDateTime;
         const diffMinutes = diffMs / 1000 / 60;
 
@@ -311,12 +440,30 @@ app.post('/employee_working_hours', async (req, res) => {
         const nextRow = result.rows[i + 1];
         const nextCheckInTime = nextRow.check_in_time;
         if (nextCheckInTime) {
-          const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
-          const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}`);
+          const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
+          const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}Z`);
           const diffMs = nextCheckInDateTime - checkOutDateTime;
           const diffMinutes = diffMs / 1000 / 60;
 
           console.log(`Reason: "${reason}", Diff Minutes: ${diffMinutes}`);
+
+          if (reason === 'break') {
+            breakMinutes += diffMinutes;
+            console.log("BREAK");
+          } else if (reason.includes('office')) { // Check if reason contains "office"
+            officeWorkMinutes += diffMinutes;
+            console.log("OFFICE WORK");
+          } else {
+            otherMinutes += diffMinutes;
+            console.log("OTHER");
+          }
+        }
+      } else if (checkOutTime && i === result.rows.length - 1) {
+        // If this is the last check-out and there's no subsequent check-in, count time until shift end
+        const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
+        if (checkOutDateTime < shiftEndTime) {
+          const diffMs = shiftEndTime - checkOutDateTime;
+          const diffMinutes = diffMs / 1000 / 60;
 
           if (reason === 'break') {
             breakMinutes += diffMinutes;
@@ -361,7 +508,7 @@ app.post('/employee_working_hours', async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
-//Individual Employee Monthly Attendnace
+
 app.get("/employee_monthly_report", async (req, res) => {
   user = req.session.user;
   console.log(user)
@@ -949,6 +1096,7 @@ app.get("/daily_working_hours", async (req, res) => {
     res.redirect("/");
   }
 });
+
 app.post('/daily_working_hours', async (req, res) => {
   const { name, date } = req.body;
   const user = req.session.user;
@@ -1085,43 +1233,7 @@ app.get("/check_in", async (req, res) => {
     res.redirect("/");
   }
 });
-// app.post('/check_in', async (req, res) => {
-//   const { name, date, location, time } = req.body;
-//   const user = req.session.user;
-//   const loginId = user.id;
-//   const type = 'IN';
-//   const reason = ''; // Set a reason if needed
 
-//   try {
-//     // Check if the user has any unchecked-out record for the given date
-//     const checkQuery = `
-//       SELECT id FROM record
-//       WHERE name = $1 AND date = $2 AND id = $3 AND check_out_time IS NULL
-//       LIMIT 1;
-//     `;
-//     const checkValues = [name, date, loginId];
-
-//     const checkResult = await pool.query(checkQuery, checkValues);
-
-//     if (checkResult.rows.length > 0) {
-//       res.status(400).send("Cannot check in. You have an existing session that hasn't been checked out.");
-//       return;
-//     }
-
-//     // Insert the check-in time into the record table
-//     const insertQuery = `
-//       INSERT INTO record(name, check_in_time, date, id, type, reason, location)
-//       VALUES ($1, $2, $3, $4, $5, $6, $7)
-//     `;
-//     const insertValues = [name, time, date, loginId, type, reason, location];
-
-//     await pool.query(insertQuery, insertValues);
-//     res.render("dashboard");
-//   } catch (error) {
-//     console.error("Error executing check-in query:", error);
-//     res.status(500).send("Internal Server Error");
-//   }
-// });
 app.post('/check_in', async (req, res) => {
   const { name, date, location, time } = req.body;
   const user = req.session.user;
@@ -1169,6 +1281,68 @@ app.post('/check_in', async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
+
+// app.post('/check_in', async (req, res) => {
+//   const { name, date, location, time } = req.body;
+//   const user = req.session.user;
+//   const loginId = user.id;
+//   const type = 'IN';
+//   const reason = ''; // Set a reason if needed
+
+//   try {
+//     // Convert check-in time to a Date object
+//     const checkInTime = new Date(`1970-01-01T${time}Z`);
+//     const cutoffTime = new Date('1970-01-01T19:00:00Z');
+
+//     // Check if the check-in time is after 19:00
+//     if (checkInTime > cutoffTime) {
+//       res.status(400).send("Cannot check in after 19:00.");
+//       return;
+//     }
+
+//     // Check if the user has any unchecked-out record for the current date
+//     const checkQuery = `
+//       SELECT id, date FROM record
+//       WHERE name = $1 AND id = $2 AND check_out_time IS NULL
+//       ORDER BY date DESC
+//       LIMIT 1;
+//     `;
+//     const checkValues = [name, loginId];
+//     const checkResult = await pool.query(checkQuery, checkValues);
+
+//     if (checkResult.rows.length > 0) {
+//       const lastCheckInDate = new Date(checkResult.rows[0].date);
+//       const currentDate = new Date(date);
+
+//       // Check if the last check-in was on the previous date
+//       if (lastCheckInDate.getDate() === currentDate.getDate() - 1) {
+//         // Allow check-in if the last check-in was on the previous date
+//         const insertQuery = `
+//           INSERT INTO record(name, check_in_time, date, id, type, reason, location)
+//           VALUES ($1, $2, $3, $4, $5, $6, $7)
+//         `;
+//         const insertValues = [name, time, date, loginId, type, reason, location];
+//         await pool.query(insertQuery, insertValues);
+//         res.render("dashboard");
+//       } else {
+//         res.status(400).send("Cannot check in. You have an existing session that hasn't been checked out.");
+//         return;
+//       }
+//     } else {
+//       // Insert the check-in time into the record table if there is no previous record
+//       const insertQuery = `
+//         INSERT INTO record(name, check_in_time, date, id, type, reason, location)
+//         VALUES ($1, $2, $3, $4, $5, $6, $7)
+//       `;
+//       const insertValues = [name, time, date, loginId, type, reason, location];
+//       await pool.query(insertQuery, insertValues);
+//       res.render("dashboard");
+//     }
+//   } catch (error) {
+//     console.error("Error executing check-in query:", error);
+//     res.status(500).send("Internal Server Error");
+//   }
+// });
 
 
 app.get("/check_out", async (req, res) => {
