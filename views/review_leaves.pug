@@ -1,3 +1,4 @@
+doctype html
 html
   head
     title Cressoft AMS Review Leaves
@@ -37,9 +38,11 @@ html
               th Employee
               th Approved Leave Days
               th Rejected Leave Days
+              th Absent Days
           tbody
             each user in users
               tr
                 td= user.name.trim()
                 td= leaveCounts[user.id].approvedLeaveDays
                 td= leaveCounts[user.id].rejectedLeaveDays
+                td= leaveCounts[user.id].absentDays

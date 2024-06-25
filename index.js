@@ -73,6 +73,57 @@ app.post("/loginAction", async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
+/// Mark Absent
+app.get("/admin_mark_absent", async (req, res) => {
+  const user = req.session.user;
+  if (user && user.role.trim().toLowerCase() === 'admin') {
+    res.render("admin_mark_absent", { userName: user.name });
+  } else {
+    res.redirect("/");
+  }
+});
+app.post("/admin_mark_absent", async (req, res) => {
+  const user = req.session.user;
+  const { employeeName, date } = req.body;
+
+  if (user && user.role.trim().toLowerCase() === 'admin') {
+    try {
+      // Find the user ID based on the provided employee name
+      const userQuery = `
+        SELECT id FROM login WHERE lower(name) LIKE lower($1);
+      `;
+      const userValues = [`%${employeeName.trim()}%`];
+      const userResult = await pool.query(userQuery, userValues);
+
+      if (userResult.rows.length === 0) {
+        res.status(404).send("User not found.");
+        return;
+      }
+
+      const employeeId = userResult.rows[0].id;
+
+      // Insert or update the absence record in the leaves table
+      const upsertQuery = `
+        INSERT INTO leaves (user_id, start_date, end_date, reason, status)
+        VALUES ($1, $2, $2, 'Marked Absent', 'absent')
+        ON CONFLICT (user_id, start_date) 
+        DO UPDATE SET status = EXCLUDED.status;
+      `;
+      const upsertValues = [employeeId, date];
+      await pool.query(upsertQuery, upsertValues);
+
+      res.redirect("/leave_history_admin");
+    } catch (error) {
+      console.error("Error marking absence:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  } else {
+    res.redirect("/");
+  }
+});
+
+
+
 ///Individual Employee Monthly Working Hours
 app.get("/employee_monthly_working_hours", async (req, res) => {
   user = req.session.user;
@@ -720,6 +771,76 @@ app.get("/leave_history", async (req, res) => {
   }
 });
 
+// app.get("/review_leaves", async (req, res) => {
+//   const user = req.session.user;
+//   console.log("User session:", user);  // Debugging line
+
+//   if (user && user.role.trim().toLowerCase() === 'admin') {
+//     try {
+//       const query = `
+//         SELECT leaves.leave_id, leaves.user_id, leaves.start_date, leaves.end_date, leaves.reason, leaves.status, login.name
+//         FROM leaves
+//         JOIN login ON leaves.user_id = login.id
+//         WHERE leaves.status = 'Pending' AND login.role != 'admin'
+//         ORDER BY leaves.start_date DESC;
+//       `;
+//       const result = await pool.query(query);
+//       const leaves = result.rows;
+
+//       // Format the dates correctly
+//       leaves.forEach(leave => {
+//         leave.start_date = new Date(leave.start_date).toLocaleDateString();
+//         leave.end_date = new Date(leave.end_date).toLocaleDateString();
+//       });
+
+//       // Fetch all users and their leave counts, excluding admins
+//       const usersQuery = `
+//         SELECT id, name FROM login WHERE role != 'admin'
+//       `;
+//       const usersResult = await pool.query(usersQuery);
+//       const users = usersResult.rows;
+
+//       // Initialize leaveCounts object
+//       const leaveCounts = {};
+
+//       // Calculate approved and rejected leave days for each user
+//       for (let user of users) {
+//         leaveCounts[user.id] = {
+//           approvedLeaveDays: 0,
+//           rejectedLeaveDays: 0
+//         };
+
+//         const userLeavesQuery = `
+//           SELECT start_date, end_date, status
+//           FROM leaves
+//           WHERE user_id = $1
+//         `;
+//         const userLeavesValues = [user.id];
+//         const userLeavesResult = await pool.query(userLeavesQuery, userLeavesValues);
+//         const userLeaves = userLeavesResult.rows;
+
+//         userLeaves.forEach(leave => {
+//           const startDate = new Date(leave.start_date);
+//           const endDate = new Date(leave.end_date);
+//           const leaveDays = (endDate - startDate) / (1000 * 60 * 60 * 24) + 1; // Calculate total days of leave
+
+//           if (leave.status === 'Approved') {
+//             leaveCounts[user.id].approvedLeaveDays += leaveDays;
+//           } else if (leave.status === 'Rejected') {
+//             leaveCounts[user.id].rejectedLeaveDays += leaveDays;
+//           }
+//         });
+//       }
+
+//       res.render("review_leaves", { userName: user.name, leaves, users, leaveCounts });
+//     } catch (error) {
+//       console.error("Error fetching leave records:", error);
+//       res.status(500).send("Internal Server Error");
+//     }
+//   } else {
+//     res.redirect("/");
+//   }
+// });
 app.get("/review_leaves", async (req, res) => {
   const user = req.session.user;
   console.log("User session:", user);  // Debugging line
@@ -752,11 +873,12 @@ app.get("/review_leaves", async (req, res) => {
       // Initialize leaveCounts object
       const leaveCounts = {};
 
-      // Calculate approved and rejected leave days for each user
+      // Calculate approved, rejected, and absent leave days for each user
       for (let user of users) {
         leaveCounts[user.id] = {
           approvedLeaveDays: 0,
-          rejectedLeaveDays: 0
+          rejectedLeaveDays: 0,
+          absentDays: 0
         };
 
         const userLeavesQuery = `
@@ -777,6 +899,8 @@ app.get("/review_leaves", async (req, res) => {
             leaveCounts[user.id].approvedLeaveDays += leaveDays;
           } else if (leave.status === 'Rejected') {
             leaveCounts[user.id].rejectedLeaveDays += leaveDays;
+          } else if (leave.status === 'absent') {
+            leaveCounts[user.id].absentDays += leaveDays;
           }
         });
       }
@@ -861,7 +985,6 @@ app.post("/admin_leave_history", async (req, res) => {
   }
 });
 
-
 // app.get("/leave_history_admin", async (req, res) => {
 //   const user = req.session.user;
 //   console.log("User session:", user);  // Debugging line
@@ -874,6 +997,43 @@ app.post("/admin_leave_history", async (req, res) => {
 //                COALESCE(SUM(CASE WHEN leaves.status = 'Rejected' THEN (leaves.end_date - leaves.start_date + 1) ELSE 0 END), 0) AS rejected_leave_days
 //         FROM login
 //         LEFT JOIN leaves ON login.id = leaves.user_id
+//         WHERE login.role != 'admin'
+//         GROUP BY login.id, login.name
+//         ORDER BY login.name;
+//       `;
+//       const result = await pool.query(query);
+//       const leaveSummary = result.rows;
+//       res.render("leave_history_admin", { userName: user.name, leaveSummary });
+//     } catch (error) {
+//       console.error("Error fetching leave records:", error);
+//       res.status(500).send("Internal Server Error");
+//     }
+//   } else {
+//     res.redirect("/");
+//   }
+// });
+// app.get("/leave_history_admin", async (req, res) => {
+//   const user = req.session.user;
+//   console.log("User session:", user);  // Debugging line
+
+//   if (user && user.role.trim().toLowerCase() === 'admin') {
+//     try {
+//       const query = `
+//         SELECT login.id, login.name,
+//                COALESCE(SUM(CASE WHEN leaves.status = 'Approved' THEN (leaves.end_date - leaves.start_date + 1) ELSE 0 END), 0) AS approved_leave_days,
+//                COALESCE(SUM(CASE WHEN leaves.status = 'Rejected' THEN (leaves.end_date - leaves.start_date + 1) ELSE 0 END), 0) AS rejected_leave_days,
+//                (SELECT COUNT(*) FROM generate_series(
+//                  date_trunc('month', CURRENT_DATE),
+//                  date_trunc('month', CURRENT_DATE) + '1 month'::interval - '1 day'::interval,
+//                  '1 day'::interval
+//                ) g
+//                WHERE EXTRACT(DOW FROM g) NOT IN (0, 6)) - 
+//                COALESCE(SUM(CASE WHEN leaves.status = 'Approved' THEN (leaves.end_date - leaves.start_date + 1) ELSE 0 END), 0) -
+//                COALESCE(SUM(CASE WHEN leaves.status = 'Rejected' THEN (leaves.end_date - leaves.start_date + 1) ELSE 0 END), 0) -
+//                (SELECT COUNT(*) FROM record WHERE login.id = record.id AND date_trunc('month', record.date) = date_trunc('month', CURRENT_DATE)) AS absent_days
+//         FROM login
+//         LEFT JOIN leaves ON login.id = leaves.user_id
+//         WHERE login.role != 'admin'
 //         GROUP BY login.id, login.name
 //         ORDER BY login.name;
 //       `;
@@ -897,7 +1057,8 @@ app.get("/leave_history_admin", async (req, res) => {
       const query = `
         SELECT login.id, login.name,
                COALESCE(SUM(CASE WHEN leaves.status = 'Approved' THEN (leaves.end_date - leaves.start_date + 1) ELSE 0 END), 0) AS approved_leave_days,
-               COALESCE(SUM(CASE WHEN leaves.status = 'Rejected' THEN (leaves.end_date - leaves.start_date + 1) ELSE 0 END), 0) AS rejected_leave_days
+               COALESCE(SUM(CASE WHEN leaves.status = 'Rejected' THEN (leaves.end_date - leaves.start_date + 1) ELSE 0 END), 0) AS rejected_leave_days,
+               COALESCE(SUM(CASE WHEN leaves.status = 'absent' THEN (leaves.end_date - leaves.start_date + 1) ELSE 0 END), 0) AS absent_days
         FROM login
         LEFT JOIN leaves ON login.id = leaves.user_id
         WHERE login.role != 'admin'

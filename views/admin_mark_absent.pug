@@ -1,0 +1,17 @@
+html
+  head
+    title AMS
+    link(rel='stylesheet', href='/invoice.css')
+  body
+    include header1.pug
+    header
+      h2.center.scaps Dear #{userName} Enter Employee Name and mark it Absent
+      form(action="/admin_mark_absent", method="post")
+        div
+          label(for="employeeName") Employee Name:
+          input(type="text",name="employeeName", required)
+        div
+          label(for="date") Date:
+          input(type="date", name="date", required)
+        div
+          button(type="submit") Mark Absent

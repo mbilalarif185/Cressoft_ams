@@ -1,3 +1,24 @@
+//- html
+//-   head
+//-     title Cressoft AMS Leaves History
+//-     link(rel='stylesheet', href='/invoice.css')
+//-   body
+//-     include header1.pug
+//-     header
+//-       h1.center.scaps Employee Leave Summary
+//-       div.table-container
+//-         table.table-bordered
+//-             thead
+//-               tr
+//-                 th Employee
+//-                 th Approved Leave Days
+//-                 th Rejected Leave Days
+//-             tbody
+//-               each summary in leaveSummary
+//-                 tr
+//-                   td= summary.name.trim()  
+//-                   td= summary.approved_leave_days
+//-                   td= summary.rejected_leave_days
 html
   head
     title Cressoft AMS Leaves History
@@ -8,14 +29,16 @@ html
       h1.center.scaps Employee Leave Summary
       div.table-container
         table.table-bordered
-            thead
+          thead
+            tr
+              th Employee
+              th Approved Leave Days
+              th Rejected Leave Days
+              th Absent Days
+          tbody
+            each leave in leaveSummary
               tr
-                th Employee
-                th Approved Leave Days
-                th Rejected Leave Days
-            tbody
-              each summary in leaveSummary
-                tr
-                  td= summary.name.trim()  
-                  td= summary.approved_leave_days
-                  td= summary.rejected_leave_days
+                td= leave.name.trim()  
+                td= leave.approved_leave_days
+                td= leave.rejected_leave_days
+                td= leave.absent_days
