@@ -1,9 +1,57 @@
+//- html(lang="en")
+//-   head
+//-     meta(charset="utf-8")
+//-     meta(name="viewport", content="width=device-width, initial-scale=1.0")
+//-     link(rel='stylesheet', href='/invoice.css')
+//-     title Cressoft AMS Monthly Working Hours  Report
+//-   body
+//-     include header1.pug
+//-     div.table-container
+//-       h1 #{monthlyData[0].NAME}'s Monthly Working Hours Report for #{monthname}, #{year}
+//-       table.table-bordered
+//-         thead
+//-           tr
+//-             th Date
+//-             th Total Working Hours
+//-             th Break Time
+//-             th Office Work Time
+//-             th Other Time
+//-         tbody
+//-           each data in monthlyData
+//-             tr
+//-               td= data.date
+//-               td= data.totalHours + 'h ' + data.totalMinutesRemainder + 'm'
+//-               td= data.breakHours + 'h ' + data.breakMinutesRemainder + 'm'
+//-               td= data.officeWorkHours + 'h ' + data.officeWorkMinutesRemainder + 'm'
+//-               td= data.otherHours + 'h ' + data.otherMinutesRemainder + 'm'
+//-       .button-container
+//-         button.downloadBtn(type="button") Download as PDF
+
+//-     // Script to handle PDF download
+//-     script(src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.js")
+//-     script.
+//-       document.addEventListener('DOMContentLoaded', function () {
+//-         const downloadButton = document.querySelector('.downloadBtn');
+
+//-         downloadButton.addEventListener('click', function () {
+//-           try {
+//-             const tableContainer = document.querySelector('.table-container');
+//-             const excludedElements = tableContainer.querySelectorAll('.button-container');
+//-             excludedElements.forEach(element => element.remove());
+
+//-             html2pdf().from(tableContainer).save();
+//-           } catch (error) {
+//-             console.error('Error generating PDF:', error);
+//-             alert('An error occurred while generating the PDF.');
+//-           }
+//-         });
+//-       });
 html(lang="en")
   head
     meta(charset="utf-8")
     meta(name="viewport", content="width=device-width, initial-scale=1.0")
     link(rel='stylesheet', href='/invoice.css')
-    title Cressoft AMS Monthly Working Hours  Report
+    title Cressoft AMS Monthly Working Hours Report
   body
     include header1.pug
     div.table-container
@@ -24,6 +72,30 @@ html(lang="en")
               td= data.breakHours + 'h ' + data.breakMinutesRemainder + 'm'
               td= data.officeWorkHours + 'h ' + data.officeWorkMinutesRemainder + 'm'
               td= data.otherHours + 'h ' + data.otherMinutesRemainder + 'm'
+      h2 Total Monthly Working Hours Summary
+      table.table-bordered
+        thead
+          tr
+            th Description
+            th Total Hours
+            th Total Minutes
+        tbody
+          tr
+            td Total Working Hours
+            td= totalMonthlyHours + 'h'
+            td= totalMonthlyMinutesRemainder + 'm'
+          tr
+            td Total Break Time
+            td= totalMonthlyBreakHours + 'h'
+            td= totalMonthlyBreakMinutesRemainder + 'm'
+          tr
+            td Total Office Work Time
+            td= totalMonthlyOfficeWorkHours + 'h'
+            td= totalMonthlyOfficeWorkMinutesRemainder + 'm'
+          tr
+            td Total Other Time
+            td= totalMonthlyOtherHours + 'h'
+            td= totalMonthlyOtherMinutesRemainder + 'm'
       .button-container
         button.downloadBtn(type="button") Download as PDF
 

@@ -1106,6 +1106,147 @@ app.get("/monthly_working_hours", async (req, res) => {
     res.redirect("/");
   }
 });
+// app.post('/monthly_working_hours', async (req, res) => {
+//   const { name, year, month } = req.body;
+//   const user = req.session.user;
+
+//   // Find the user ID based on the provided name
+//   let userId;
+//   try {
+//     const userQuery = `
+//       SELECT id FROM login WHERE lower(name) LIKE lower($1);
+//     `;
+//     const userValues = [`%${name.trim()}%`];
+//     const userResult = await pool.query(userQuery, userValues);
+
+//     if (userResult.rows.length === 0) {
+//       res.status(404).send("User not found.");
+//       return;
+//     }
+
+//     userId = userResult.rows[0].id;
+//   } catch (error) {
+//     console.error("Error finding user ID:", error);
+//     res.status(500).send("Internal Server Error");
+//     return;
+//   }
+
+//   const daysInMonth = new Date(year, month, 0).getDate();
+
+//   try {
+//     const monthlyData = [];
+//     let NAME = '';
+
+//     for (let day = 1; day <= daysInMonth; day++) {
+//       const date = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+
+//       const query = `
+//         SELECT name, check_in_time, check_out_time, reason, date
+//         FROM record
+//         WHERE (
+//           lower(name) LIKE lower($1) OR
+//           lower(name) LIKE lower($2) OR
+//           lower(name) LIKE lower($3)
+//         )
+//         AND date = $4 AND id = $5
+//         ORDER BY check_in_time;
+//       `;
+//       const values = [
+//         `%${name.split(' ')[0]}%`, // First part of the name
+//         `%${name.split(' ')[1]}%`, // Middle part of the name
+//         `%${name.split(' ')[2]}%`, // Last part of the name
+//         date,
+//         userId
+//       ];
+//       const result = await pool.query(query, values);
+
+//       if (result.rows.length > 0) {
+//         let totalMinutes = 0;
+//         let breakMinutes = 0;
+//         let officeWorkMinutes = 0;
+//         let otherMinutes = 0;
+
+//         for (let i = 0; i < result.rows.length; i++) {
+//           const row = result.rows[i];
+//           const checkInTime = row.check_in_time;
+//           NAME = row.name;
+//           const checkOutTime = row.check_out_time;
+//           const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
+
+//           if (checkInTime && checkOutTime) {
+//             const checkInDateTime = new Date(`1970-01-01T${checkInTime}`);
+//             const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
+//             const diffMs = checkOutDateTime - checkInDateTime;
+//             const diffMinutes = diffMs / 1000 / 60;
+
+//             totalMinutes += diffMinutes;
+//           }
+
+//           if (checkOutTime && i < result.rows.length - 1) {
+//             const nextRow = result.rows[i + 1];
+//             const nextCheckInTime = nextRow.check_in_time;
+//             if (nextCheckInTime) {
+//               const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
+//               const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}`);
+//               const diffMs = nextCheckInDateTime - checkOutDateTime;
+//               const diffMinutes = diffMs / 1000 / 60;
+
+//               if (reason === 'break') {
+//                 breakMinutes += diffMinutes;
+//               } else if (reason.includes('office')) { // Check if reason contains "office"
+//                 officeWorkMinutes += diffMinutes;
+//               } else {
+//                 otherMinutes += diffMinutes;
+//               }
+//             }
+//           }
+//         }
+
+//         const totalHours = Math.floor(totalMinutes / 60);
+//         const totalMinutesRemainder = totalMinutes % 60;
+
+//         const breakHours = Math.floor(breakMinutes / 60);
+//         const breakMinutesRemainder = breakMinutes % 60;
+
+//         const officeWorkHours = Math.floor(officeWorkMinutes / 60);
+//         const officeWorkMinutesRemainder = officeWorkMinutes % 60;
+
+//         const otherHours = Math.floor(otherMinutes / 60);
+//         const otherMinutesRemainder = otherMinutes % 60;
+//         console.log("Name", NAME);
+//         monthlyData.push({
+//           NAME,
+//           date,
+//           totalHours,
+//           totalMinutesRemainder,
+//           breakHours,
+//           breakMinutesRemainder,
+//           officeWorkHours,
+//           officeWorkMinutesRemainder,
+//           otherHours,
+//           otherMinutesRemainder
+//         });
+//       }
+//     }
+//     const months = [
+//       'January', 'February', 'March', 'April', 'May', 'June',
+//       'July', 'August', 'September', 'October', 'November', 'December'
+//     ];
+
+//     let monthname = '';
+//     if (month >= 1 && month <= 12) {
+//       monthname = months[month - 1]; // Months array is zero-based
+//     } else {
+//       throw new Error('Invalid month number');
+//     }
+//     console.log("Monthly Data:", monthlyData);
+//     res.render('monthly_working_hours_report', { year, monthname, monthlyData });
+//   } catch (error) {
+//     console.error("Error executing query:", error);
+//     res.status(500).send("Internal Server Error");
+//   }
+// });
+
 app.post('/monthly_working_hours', async (req, res) => {
   const { name, year, month } = req.body;
   const user = req.session.user;
@@ -1136,6 +1277,10 @@ app.post('/monthly_working_hours', async (req, res) => {
   try {
     const monthlyData = [];
     let NAME = '';
+    let totalMonthlyMinutes = 0;
+    let totalMonthlyBreakMinutes = 0;
+    let totalMonthlyOfficeWorkMinutes = 0;
+    let totalMonthlyOtherMinutes = 0;
 
     for (let day = 1; day <= daysInMonth; day++) {
       const date = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
@@ -1213,7 +1358,13 @@ app.post('/monthly_working_hours', async (req, res) => {
 
         const otherHours = Math.floor(otherMinutes / 60);
         const otherMinutesRemainder = otherMinutes % 60;
-        console.log("Name", NAME);
+
+        // Accumulate totals for the whole month
+        totalMonthlyMinutes += totalMinutes;
+        totalMonthlyBreakMinutes += breakMinutes;
+        totalMonthlyOfficeWorkMinutes += officeWorkMinutes;
+        totalMonthlyOtherMinutes += otherMinutes;
+
         monthlyData.push({
           NAME,
           date,
@@ -1228,6 +1379,20 @@ app.post('/monthly_working_hours', async (req, res) => {
         });
       }
     }
+
+    // Calculate total monthly hours and minutes
+    const totalMonthlyHours = Math.floor(totalMonthlyMinutes / 60);
+    const totalMonthlyMinutesRemainder = totalMonthlyMinutes % 60;
+
+    const totalMonthlyBreakHours = Math.floor(totalMonthlyBreakMinutes / 60);
+    const totalMonthlyBreakMinutesRemainder = totalMonthlyBreakMinutes % 60;
+
+    const totalMonthlyOfficeWorkHours = Math.floor(totalMonthlyOfficeWorkMinutes / 60);
+    const totalMonthlyOfficeWorkMinutesRemainder = totalMonthlyOfficeWorkMinutes % 60;
+
+    const totalMonthlyOtherHours = Math.floor(totalMonthlyOtherMinutes / 60);
+    const totalMonthlyOtherMinutesRemainder = totalMonthlyOtherMinutes % 60;
+
     const months = [
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
@@ -1239,8 +1404,21 @@ app.post('/monthly_working_hours', async (req, res) => {
     } else {
       throw new Error('Invalid month number');
     }
+
     console.log("Monthly Data:", monthlyData);
-    res.render('monthly_working_hours_report', { year, monthname, monthlyData });
+    res.render('monthly_working_hours_report', { 
+      year, 
+      monthname, 
+      monthlyData,
+      totalMonthlyHours,
+      totalMonthlyMinutesRemainder,
+      totalMonthlyBreakHours,
+      totalMonthlyBreakMinutesRemainder,
+      totalMonthlyOfficeWorkHours,
+      totalMonthlyOfficeWorkMinutesRemainder,
+      totalMonthlyOtherHours,
+      totalMonthlyOtherMinutesRemainder
+    });
   } catch (error) {
     console.error("Error executing query:", error);
     res.status(500).send("Internal Server Error");
