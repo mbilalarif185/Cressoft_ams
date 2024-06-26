@@ -1436,6 +1436,133 @@ app.get("/daily_working_hours", async (req, res) => {
   }
 });
 
+// app.post('/daily_working_hours', async (req, res) => {
+//   const { name, date } = req.body;
+//   const user = req.session.user;
+  
+//   // Find the user ID based on the provided name
+//   let userId;
+//   try {
+//     const userQuery = `
+//       SELECT id FROM login WHERE lower(name) LIKE lower($1);
+//     `;
+//     const userValues = [`%${name.trim()}%`];
+//     const userResult = await pool.query(userQuery, userValues);
+    
+//     if (userResult.rows.length === 0) {
+//       res.status(404).send("User not found.");
+//       return;
+//     }
+    
+//     userId = userResult.rows[0].id;
+//   } catch (error) {
+//     console.error("Error finding user ID:", error);
+//     res.status(500).send("Internal Server Error");
+//     return;
+//   }
+
+//   try {
+//     const query = `
+//       SELECT name, check_in_time, check_out_time, reason
+//       FROM record
+//       WHERE lower(name) LIKE lower($1)
+//       AND date = $2 AND id = $3
+//       ORDER BY check_in_time;
+//     `;
+//     const values = [
+//       `%${name.split(' ')[0]}%`, // First part of the name
+//       date,
+//       userId
+//     ];
+
+//     console.log("Query:", query);
+//     console.log("Values:", values);
+
+//     const result = await pool.query(query, values);
+//     console.log("Query Result:", result.rows);
+
+//     if (result.rows.length === 0) {
+//       res.status(404).send("No records found for the specified date.");
+//       return;
+//     }
+
+//     let totalMinutes = 0;
+//     let breakMinutes = 0;
+//     let officeWorkMinutes = 0;
+//     let otherMinutes = 0;
+//     let NAME = '';
+
+//     for (let i = 0; i < result.rows.length; i++) {
+//       const row = result.rows[i];
+//       const checkInTime = row.check_in_time;
+//       const checkOutTime = row.check_out_time;
+//       NAME = row.name;
+//       const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
+
+//       if (checkInTime && checkOutTime) {
+//         const checkInDateTime = new Date(`1970-01-01T${checkInTime}`);
+//         const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
+//         const diffMs = checkOutDateTime - checkInDateTime;
+//         const diffMinutes = diffMs / 1000 / 60;
+
+//         totalMinutes += diffMinutes;
+//       }
+
+//       if (checkOutTime && i < result.rows.length - 1) {
+//         const nextRow = result.rows[i + 1];
+//         const nextCheckInTime = nextRow.check_in_time;
+//         if (nextCheckInTime) {
+//           const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
+//           const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}`);
+//           const diffMs = nextCheckInDateTime - checkOutDateTime;
+//           const diffMinutes = diffMs / 1000 / 60;
+
+//           console.log(`Reason: "${reason}", Diff Minutes: ${diffMinutes}`);
+
+//           if (reason === 'break') {
+//             breakMinutes += diffMinutes;
+//             console.log("BREAK");
+//           } else if (reason.includes('office')) { // Check if reason contains "office"
+//             officeWorkMinutes += diffMinutes;
+//             console.log("OFFICE WORK");
+//           } else {
+//             otherMinutes += diffMinutes;
+//             console.log("OTHER");
+//           }
+//         }
+//       }
+//     }
+
+//     const totalHours = Math.floor(totalMinutes / 60);
+//     const totalMinutesRemainder = totalMinutes % 60;
+
+//     const breakHours = Math.floor(breakMinutes / 60);
+//     const breakMinutesRemainder = breakMinutes % 60;
+
+//     const officeWorkHours = Math.floor(officeWorkMinutes / 60);
+//     const officeWorkMinutesRemainder = officeWorkMinutes % 60;
+
+//     const otherHours = Math.floor(otherMinutes / 60);
+//     const otherMinutesRemainder = otherMinutes % 60;
+
+//     res.render('daily_working_hours_report', {
+//       NAME,
+//       date,
+//       totalHours,
+//       totalMinutesRemainder,
+//       breakHours,
+//       breakMinutesRemainder,
+//       officeWorkHours,
+//       officeWorkMinutesRemainder,
+//       otherHours,
+//       otherMinutesRemainder
+//     });
+//   } catch (error) {
+//     console.error("Error executing query:", error);
+//     res.status(500).send("Internal Server Error");
+//   }
+// });
+
 app.post('/daily_working_hours', async (req, res) => {
   const { name, date } = req.body;
   const user = req.session.user;
@@ -1491,6 +1618,7 @@ app.post('/daily_working_hours', async (req, res) => {
     let officeWorkMinutes = 0;
     let otherMinutes = 0;
     let NAME = '';
+    const shiftEndTime = new Date('1970-01-01T19:00:00Z');
 
     for (let i = 0; i < result.rows.length; i++) {
       const row = result.rows[i];
@@ -1500,8 +1628,8 @@ app.post('/daily_working_hours', async (req, res) => {
       const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
 
       if (checkInTime && checkOutTime) {
-        const checkInDateTime = new Date(`1970-01-01T${checkInTime}`);
-        const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
+        const checkInDateTime = new Date(`1970-01-01T${checkInTime}Z`);
+        const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
         const diffMs = checkOutDateTime - checkInDateTime;
         const diffMinutes = diffMs / 1000 / 60;
 
@@ -1512,12 +1640,30 @@ app.post('/daily_working_hours', async (req, res) => {
         const nextRow = result.rows[i + 1];
         const nextCheckInTime = nextRow.check_in_time;
         if (nextCheckInTime) {
-          const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
-          const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}`);
+          const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
+          const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}Z`);
           const diffMs = nextCheckInDateTime - checkOutDateTime;
           const diffMinutes = diffMs / 1000 / 60;
 
           console.log(`Reason: "${reason}", Diff Minutes: ${diffMinutes}`);
+
+          if (reason === 'break') {
+            breakMinutes += diffMinutes;
+            console.log("BREAK");
+          } else if (reason.includes('office')) { // Check if reason contains "office"
+            officeWorkMinutes += diffMinutes;
+            console.log("OFFICE WORK");
+          } else {
+            otherMinutes += diffMinutes;
+            console.log("OTHER");
+          }
+        }
+      } else if (checkOutTime && i === result.rows.length - 1) {
+        // If this is the last check-out and there's no subsequent check-in, count time until shift end
+        const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
+        if (checkOutDateTime < shiftEndTime) {
+          const diffMs = shiftEndTime - checkOutDateTime;
+          const diffMinutes = diffMs / 1000 / 60;
 
           if (reason === 'break') {
             breakMinutes += diffMinutes;
@@ -1562,6 +1708,8 @@ app.post('/daily_working_hours', async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
+
+
 
 app.get("/check_in", async (req, res) => {
   user = req.session.user;
