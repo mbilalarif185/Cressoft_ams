@@ -1106,6 +1106,7 @@ app.get("/monthly_working_hours", async (req, res) => {
     res.redirect("/");
   }
 });
+
 // app.post('/monthly_working_hours', async (req, res) => {
 //   const { name, year, month } = req.body;
 //   const user = req.session.user;
@@ -1136,6 +1137,10 @@ app.get("/monthly_working_hours", async (req, res) => {
 //   try {
 //     const monthlyData = [];
 //     let NAME = '';
+//     let totalMonthlyMinutes = 0;
+//     let totalMonthlyBreakMinutes = 0;
+//     let totalMonthlyOfficeWorkMinutes = 0;
+//     let totalMonthlyOtherMinutes = 0;
 
 //     for (let day = 1; day <= daysInMonth; day++) {
 //       const date = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
@@ -1213,7 +1218,13 @@ app.get("/monthly_working_hours", async (req, res) => {
 
 //         const otherHours = Math.floor(otherMinutes / 60);
 //         const otherMinutesRemainder = otherMinutes % 60;
-//         console.log("Name", NAME);
+
+//         // Accumulate totals for the whole month
+//         totalMonthlyMinutes += totalMinutes;
+//         totalMonthlyBreakMinutes += breakMinutes;
+//         totalMonthlyOfficeWorkMinutes += officeWorkMinutes;
+//         totalMonthlyOtherMinutes += otherMinutes;
+
 //         monthlyData.push({
 //           NAME,
 //           date,
@@ -1228,6 +1239,20 @@ app.get("/monthly_working_hours", async (req, res) => {
 //         });
 //       }
 //     }
+
+//     // Calculate total monthly hours and minutes
+//     const totalMonthlyHours = Math.floor(totalMonthlyMinutes / 60);
+//     const totalMonthlyMinutesRemainder = totalMonthlyMinutes % 60;
+
+//     const totalMonthlyBreakHours = Math.floor(totalMonthlyBreakMinutes / 60);
+//     const totalMonthlyBreakMinutesRemainder = totalMonthlyBreakMinutes % 60;
+
+//     const totalMonthlyOfficeWorkHours = Math.floor(totalMonthlyOfficeWorkMinutes / 60);
+//     const totalMonthlyOfficeWorkMinutesRemainder = totalMonthlyOfficeWorkMinutes % 60;
+
+//     const totalMonthlyOtherHours = Math.floor(totalMonthlyOtherMinutes / 60);
+//     const totalMonthlyOtherMinutesRemainder = totalMonthlyOtherMinutes % 60;
+
 //     const months = [
 //       'January', 'February', 'March', 'April', 'May', 'June',
 //       'July', 'August', 'September', 'October', 'November', 'December'
@@ -1239,14 +1264,26 @@ app.get("/monthly_working_hours", async (req, res) => {
 //     } else {
 //       throw new Error('Invalid month number');
 //     }
+
 //     console.log("Monthly Data:", monthlyData);
-//     res.render('monthly_working_hours_report', { year, monthname, monthlyData });
+//     res.render('monthly_working_hours_report', { 
+//       year, 
+//       monthname, 
+//       monthlyData,
+//       totalMonthlyHours,
+//       totalMonthlyMinutesRemainder,
+//       totalMonthlyBreakHours,
+//       totalMonthlyBreakMinutesRemainder,
+//       totalMonthlyOfficeWorkHours,
+//       totalMonthlyOfficeWorkMinutesRemainder,
+//       totalMonthlyOtherHours,
+//       totalMonthlyOtherMinutesRemainder
+//     });
 //   } catch (error) {
 //     console.error("Error executing query:", error);
 //     res.status(500).send("Internal Server Error");
 //   }
 // });
-
 app.post('/monthly_working_hours', async (req, res) => {
   const { name, year, month } = req.body;
   const user = req.session.user;
@@ -1281,6 +1318,8 @@ app.post('/monthly_working_hours', async (req, res) => {
     let totalMonthlyBreakMinutes = 0;
     let totalMonthlyOfficeWorkMinutes = 0;
     let totalMonthlyOtherMinutes = 0;
+
+    const shiftEndTime = new Date('1970-01-01T19:00:00Z');
 
     for (let day = 1; day <= daysInMonth; day++) {
       const date = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
@@ -1319,8 +1358,8 @@ app.post('/monthly_working_hours', async (req, res) => {
           const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
 
           if (checkInTime && checkOutTime) {
-            const checkInDateTime = new Date(`1970-01-01T${checkInTime}`);
-            const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
+            const checkInDateTime = new Date(`1970-01-01T${checkInTime}Z`);
+            const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
             const diffMs = checkOutDateTime - checkInDateTime;
             const diffMinutes = diffMs / 1000 / 60;
 
@@ -1331,9 +1370,24 @@ app.post('/monthly_working_hours', async (req, res) => {
             const nextRow = result.rows[i + 1];
             const nextCheckInTime = nextRow.check_in_time;
             if (nextCheckInTime) {
-              const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
-              const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}`);
+              const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
+              const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}Z`);
               const diffMs = nextCheckInDateTime - checkOutDateTime;
+              const diffMinutes = diffMs / 1000 / 60;
+
+              if (reason === 'break') {
+                breakMinutes += diffMinutes;
+              } else if (reason.includes('office')) { // Check if reason contains "office"
+                officeWorkMinutes += diffMinutes;
+              } else {
+                otherMinutes += diffMinutes;
+              }
+            }
+          } else if (checkOutTime && i === result.rows.length - 1) {
+            // If this is the last check-out and there's no subsequent check-in, count time until shift end
+            const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
+            if (checkOutDateTime < shiftEndTime) {
+              const diffMs = shiftEndTime - checkOutDateTime;
               const diffMinutes = diffMs / 1000 / 60;
 
               if (reason === 'break') {
