@@ -1142,6 +1142,8 @@ app.get("/monthly_working_hours", async (req, res) => {
 //     let totalMonthlyOfficeWorkMinutes = 0;
 //     let totalMonthlyOtherMinutes = 0;
 
+//     const shiftEndTime = new Date('1970-01-01T19:00:00Z');
+
 //     for (let day = 1; day <= daysInMonth; day++) {
 //       const date = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
 
@@ -1179,8 +1181,8 @@ app.get("/monthly_working_hours", async (req, res) => {
 //           const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
 
 //           if (checkInTime && checkOutTime) {
-//             const checkInDateTime = new Date(`1970-01-01T${checkInTime}`);
-//             const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
+//             const checkInDateTime = new Date(`1970-01-01T${checkInTime}Z`);
+//             const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
 //             const diffMs = checkOutDateTime - checkInDateTime;
 //             const diffMinutes = diffMs / 1000 / 60;
 
@@ -1191,9 +1193,24 @@ app.get("/monthly_working_hours", async (req, res) => {
 //             const nextRow = result.rows[i + 1];
 //             const nextCheckInTime = nextRow.check_in_time;
 //             if (nextCheckInTime) {
-//               const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
-//               const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}`);
+//               const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
+//               const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}Z`);
 //               const diffMs = nextCheckInDateTime - checkOutDateTime;
+//               const diffMinutes = diffMs / 1000 / 60;
+
+//               if (reason === 'break') {
+//                 breakMinutes += diffMinutes;
+//               } else if (reason.includes('office')) { // Check if reason contains "office"
+//                 officeWorkMinutes += diffMinutes;
+//               } else {
+//                 otherMinutes += diffMinutes;
+//               }
+//             }
+//           } else if (checkOutTime && i === result.rows.length - 1) {
+//             // If this is the last check-out and there's no subsequent check-in, count time until shift end
+//             const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
+//             if (checkOutDateTime < shiftEndTime) {
+//               const diffMs = shiftEndTime - checkOutDateTime;
 //               const diffMinutes = diffMs / 1000 / 60;
 
 //               if (reason === 'break') {
@@ -1284,6 +1301,7 @@ app.get("/monthly_working_hours", async (req, res) => {
 //     res.status(500).send("Internal Server Error");
 //   }
 // });
+
 app.post('/monthly_working_hours', async (req, res) => {
   const { name, year, month } = req.body;
   const user = req.session.user;
@@ -1319,6 +1337,7 @@ app.post('/monthly_working_hours', async (req, res) => {
     let totalMonthlyOfficeWorkMinutes = 0;
     let totalMonthlyOtherMinutes = 0;
 
+    const shiftStartTime = new Date('1970-01-01T10:00:00Z');
     const shiftEndTime = new Date('1970-01-01T19:00:00Z');
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -1349,6 +1368,7 @@ app.post('/monthly_working_hours', async (req, res) => {
         let breakMinutes = 0;
         let officeWorkMinutes = 0;
         let otherMinutes = 0;
+        let isFirstCheckIn = true;  // Track the first check-in
 
         for (let i = 0; i < result.rows.length; i++) {
           const row = result.rows[i];
@@ -1357,13 +1377,26 @@ app.post('/monthly_working_hours', async (req, res) => {
           const checkOutTime = row.check_out_time;
           const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
 
-          if (checkInTime && checkOutTime) {
-            const checkInDateTime = new Date(`1970-01-01T${checkInTime}Z`);
-            const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
-            const diffMs = checkOutDateTime - checkInDateTime;
-            const diffMinutes = diffMs / 1000 / 60;
+          if (checkInTime) {
+            let checkInDateTime = new Date(`1970-01-01T${checkInTime}Z`);
 
-            totalMinutes += diffMinutes;
+            // If this is the first check-in and it's after 10:00, add the difference to otherMinutes
+            if (isFirstCheckIn && checkInDateTime > shiftStartTime) {
+              const diffMs = checkInDateTime - shiftStartTime;
+              const diffMinutes = diffMs / 1000 / 60;
+              otherMinutes += diffMinutes;
+              isFirstCheckIn = false; // Mark the first check-in as processed
+            } else if (isFirstCheckIn) {
+              isFirstCheckIn = false; // Mark the first check-in as processed even if before 10:00
+            }
+
+            if (checkOutTime) {
+              const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
+              const diffMs = checkOutDateTime - checkInDateTime;
+              const diffMinutes = diffMs / 1000 / 60;
+
+              totalMinutes += diffMinutes;
+            }
           }
 
           if (checkOutTime && i < result.rows.length - 1) {
@@ -1545,6 +1578,7 @@ app.get("/daily_working_hours", async (req, res) => {
 //     let officeWorkMinutes = 0;
 //     let otherMinutes = 0;
 //     let NAME = '';
+//     const shiftEndTime = new Date('1970-01-01T19:00:00Z');
 
 //     for (let i = 0; i < result.rows.length; i++) {
 //       const row = result.rows[i];
@@ -1554,8 +1588,8 @@ app.get("/daily_working_hours", async (req, res) => {
 //       const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
 
 //       if (checkInTime && checkOutTime) {
-//         const checkInDateTime = new Date(`1970-01-01T${checkInTime}`);
-//         const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
+//         const checkInDateTime = new Date(`1970-01-01T${checkInTime}Z`);
+//         const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
 //         const diffMs = checkOutDateTime - checkInDateTime;
 //         const diffMinutes = diffMs / 1000 / 60;
 
@@ -1566,12 +1600,30 @@ app.get("/daily_working_hours", async (req, res) => {
 //         const nextRow = result.rows[i + 1];
 //         const nextCheckInTime = nextRow.check_in_time;
 //         if (nextCheckInTime) {
-//           const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
-//           const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}`);
+//           const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
+//           const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}Z`);
 //           const diffMs = nextCheckInDateTime - checkOutDateTime;
 //           const diffMinutes = diffMs / 1000 / 60;
 
 //           console.log(`Reason: "${reason}", Diff Minutes: ${diffMinutes}`);
+
+//           if (reason === 'break') {
+//             breakMinutes += diffMinutes;
+//             console.log("BREAK");
+//           } else if (reason.includes('office')) { // Check if reason contains "office"
+//             officeWorkMinutes += diffMinutes;
+//             console.log("OFFICE WORK");
+//           } else {
+//             otherMinutes += diffMinutes;
+//             console.log("OTHER");
+//           }
+//         }
+//       } else if (checkOutTime && i === result.rows.length - 1) {
+//         // If this is the last check-out and there's no subsequent check-in, count time until shift end
+//         const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
+//         if (checkOutDateTime < shiftEndTime) {
+//           const diffMs = shiftEndTime - checkOutDateTime;
+//           const diffMinutes = diffMs / 1000 / 60;
 
 //           if (reason === 'break') {
 //             breakMinutes += diffMinutes;
@@ -1620,7 +1672,11 @@ app.get("/daily_working_hours", async (req, res) => {
 app.post('/daily_working_hours', async (req, res) => {
   const { name, date } = req.body;
   const user = req.session.user;
-  
+
+  // Define the shift start time
+  const shiftStartTime = new Date('1970-01-01T10:00:00Z');
+  const shiftEndTime = new Date('1970-01-01T19:00:00Z');
+
   // Find the user ID based on the provided name
   let userId;
   try {
@@ -1629,12 +1685,12 @@ app.post('/daily_working_hours', async (req, res) => {
     `;
     const userValues = [`%${name.trim()}%`];
     const userResult = await pool.query(userQuery, userValues);
-    
+
     if (userResult.rows.length === 0) {
       res.status(404).send("User not found.");
       return;
     }
-    
+
     userId = userResult.rows[0].id;
   } catch (error) {
     console.error("Error finding user ID:", error);
@@ -1672,7 +1728,7 @@ app.post('/daily_working_hours', async (req, res) => {
     let officeWorkMinutes = 0;
     let otherMinutes = 0;
     let NAME = '';
-    const shiftEndTime = new Date('1970-01-01T19:00:00Z');
+    let isFirstCheckIn = true;  // Track the first check-in
 
     for (let i = 0; i < result.rows.length; i++) {
       const row = result.rows[i];
@@ -1681,13 +1737,26 @@ app.post('/daily_working_hours', async (req, res) => {
       NAME = row.name;
       const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
 
-      if (checkInTime && checkOutTime) {
-        const checkInDateTime = new Date(`1970-01-01T${checkInTime}Z`);
-        const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
-        const diffMs = checkOutDateTime - checkInDateTime;
-        const diffMinutes = diffMs / 1000 / 60;
+      if (checkInTime) {
+        let checkInDateTime = new Date(`1970-01-01T${checkInTime}Z`);
 
-        totalMinutes += diffMinutes;
+        // If this is the first check-in and it's after 10:00, add the difference to otherMinutes
+        if (isFirstCheckIn && checkInDateTime > shiftStartTime) {
+          const diffMs = checkInDateTime - shiftStartTime;
+          const diffMinutes = diffMs / 1000 / 60;
+          otherMinutes += diffMinutes;
+          isFirstCheckIn = false; // Mark the first check-in as processed
+        } else if (isFirstCheckIn) {
+          isFirstCheckIn = false; // Mark the first check-in as processed even if before 10:00
+        }
+
+        if (checkOutTime) {
+          const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
+          const diffMs = checkOutDateTime - checkInDateTime;
+          const diffMinutes = diffMs / 1000 / 60;
+
+          totalMinutes += diffMinutes;
+        }
       }
 
       if (checkOutTime && i < result.rows.length - 1) {
@@ -1762,6 +1831,7 @@ app.post('/daily_working_hours', async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
+
 
 
 
