@@ -1,0 +1,24 @@
+head
+  title Cressoft AMS Daily Tasks Report
+  meta(charset="utf-8")
+  meta(name="viewport", content="width=device-width, initial-scale=1.0")
+  link(rel='stylesheet', href='/invoice.css')
+body
+  include header1.pug
+  h2.center.scaps Daily Tasks Report for #{date}
+  if reportData.length > 0
+    table.table-bordered
+      thead
+        tr
+          th Date
+          th Task Description
+      tbody
+        each task in reportData
+          tr
+            td= task.task_date
+            td
+              ul
+                each description in task.task_description.split('.').filter(desc => desc.trim() !== '')
+                  li= description.trim() + '.'
+  else
+    p No tasks found for the selected date and employee.

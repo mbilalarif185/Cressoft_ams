@@ -1,0 +1,29 @@
+head
+  title Cressoft AMS Daily Attendance
+  link(rel='stylesheet', href='/style.css')
+  script.
+    function validateDate() {
+      const dateInput = document.getElementById('task_date');
+      const dateValue = dateInput.value;
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/; // YYYY-MM-DD format
+
+      if (!dateRegex.test(dateValue)) {
+        alert('Please enter a date in YYYY-MM-DD format.');
+        return false; // Prevent form submission
+      }
+
+      return true; // Allow form submission
+    }
+body
+  include header1.pug
+  h2.center.scaps Dear #{userName} fill the details
+  br
+  form(method='post' action='/daily_tasks' class='' onsubmit='return validateDate();')
+    label(for='name') Name:
+    input(type='text', name='name', required=true, value=userName, readonly)
+    label(for="task_date") Date:
+    input(type="date" name="task_date" id="task_date" min="2022-01-01" required placeholder="YYYY-MM-DD")
+    label(for="task_description") Task Description:
+    textarea(name="task_description" id="task_description" required placeholder="Enter your daily task description")
+    p.gorg
+      button(type='submit' class="button") Submit

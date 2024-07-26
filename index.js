@@ -73,6 +73,107 @@ app.post("/loginAction", async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
+////Daily Tasks Report
+app.get("/daily_tasks_report", async (req, res) => {
+  const user = req.session.user;
+  if (user && user.role.trim().toLowerCase() === 'admin') {
+    res.render("daily_tasks_report", { userName: user.name });
+  } else {
+    res.redirect("/");
+  }
+});
+
+app.post('/daily_tasks_report', async (req, res) => {
+  const { name, date } = req.body;
+
+  console.log("Name:", name);
+  console.log("Date:", date);
+
+  async function generateDailyTasksReport(name, date) {
+    try {
+      const query = `
+        SELECT task_date, task_description
+        FROM tasks
+        WHERE task_date::date = $1::date
+          AND employee_id IN (
+            SELECT id
+            FROM login
+            WHERE lower(name) ILIKE lower($2)
+          )
+        ORDER BY task_date;
+      `;
+      const values = [date, `%${name}%`];
+      const result = await pool.query(query, values);
+
+      return result.rows; // Return the rows from the query result
+    } catch (error) {
+      console.error('Error generating daily tasks report:', error);
+      throw error; // Throw the error for handling in the caller function
+    }
+  }
+
+  try {
+    const reportData = await generateDailyTasksReport(name, date);
+
+    reportData.forEach((record) => {
+      record.task_date = new Date(record.task_date).toDateString().slice(0, 10);
+    });
+    res.render('dailytasks_report', { reportData, date });
+  } catch (error) {
+    console.error('Error generating daily tasks report:', error);
+    res.status(500).send('Error generating daily tasks report');
+  }
+});
+
+
+///Employee Daily Tasks
+app.get("/daily_tasks", async (req, res) => {
+  user = req.session.user;
+  console.log(user)
+  if (user) {
+    res.render("daily_tasks", { userName: user.name });
+  } else {
+    res.redirect("/");
+  }
+});
+
+app.post('/daily_tasks', async (req, res) => {
+  const user = req.session.user;
+  const { name, task_date, task_description } = req.body;
+
+  console.log("Name:", name);
+  console.log("Task Date:", task_date);
+  console.log("Task Description:", task_description);
+
+  async function insertTask(employeeId, taskDate, taskDescription) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const queryText = 'INSERT INTO tasks(employee_id, task_date, task_description) VALUES($1, $2, $3)';
+      await client.query(queryText, [employeeId, taskDate, taskDescription]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Error inserting task:', error);
+      throw error; // Throw the error for handling in the caller function
+    } finally {
+      client.release();
+    }
+  }
+
+  try {
+    const employeeId = user.id; // Assuming the user session contains the employee ID
+
+    // Insert the task into the tasks table
+    await insertTask(employeeId, task_date, task_description);
+
+    res.send('Task successfully added');
+  } catch (error) {
+    console.error('Error inserting task:', error);
+    res.status(500).send('Error inserting task');
+  }
+});
+
 /// Mark Absent
 app.get("/admin_mark_absent", async (req, res) => {
   const user = req.session.user;
@@ -275,7 +376,9 @@ app.post('/employee_monthly_working_hours', async (req, res) => {
   }
 });
 
-///Individual Employee Daily Working Hours
+//Individual Employee Daily Working Hours
+
+
 
 app.get("/employee_working_hours", async (req, res) => {
   user = req.session.user;
@@ -342,6 +445,7 @@ app.get("/employee_working_hours", async (req, res) => {
 //     let officeWorkMinutes = 0;
 //     let otherMinutes = 0;
 //     let NAME = '';
+//     const shiftEndTime = new Date('1970-01-01T19:00:00Z');
 
 //     for (let i = 0; i < result.rows.length; i++) {
 //       const row = result.rows[i];
@@ -351,8 +455,8 @@ app.get("/employee_working_hours", async (req, res) => {
 //       const reason = row.reason.trim().toLowerCase(); // Trim and lower case the reason
 
 //       if (checkInTime && checkOutTime) {
-//         const checkInDateTime = new Date(`1970-01-01T${checkInTime}`);
-//         const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
+//         const checkInDateTime = new Date(`1970-01-01T${checkInTime}Z`);
+//         const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
 //         const diffMs = checkOutDateTime - checkInDateTime;
 //         const diffMinutes = diffMs / 1000 / 60;
 
@@ -363,12 +467,30 @@ app.get("/employee_working_hours", async (req, res) => {
 //         const nextRow = result.rows[i + 1];
 //         const nextCheckInTime = nextRow.check_in_time;
 //         if (nextCheckInTime) {
-//           const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}`);
-//           const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}`);
+//           const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
+//           const nextCheckInDateTime = new Date(`1970-01-01T${nextCheckInTime}Z`);
 //           const diffMs = nextCheckInDateTime - checkOutDateTime;
 //           const diffMinutes = diffMs / 1000 / 60;
 
 //           console.log(`Reason: "${reason}", Diff Minutes: ${diffMinutes}`);
+
+//           if (reason === 'break') {
+//             breakMinutes += diffMinutes;
+//             console.log("BREAK");
+//           } else if (reason.includes('office')) { // Check if reason contains "office"
+//             officeWorkMinutes += diffMinutes;
+//             console.log("OFFICE WORK");
+//           } else {
+//             otherMinutes += diffMinutes;
+//             console.log("OTHER");
+//           }
+//         }
+//       } else if (checkOutTime && i === result.rows.length - 1) {
+//         // If this is the last check-out and there's no subsequent check-in, count time until shift end
+//         const checkOutDateTime = new Date(`1970-01-01T${checkOutTime}Z`);
+//         if (checkOutDateTime < shiftEndTime) {
+//           const diffMs = shiftEndTime - checkOutDateTime;
+//           const diffMinutes = diffMs / 1000 / 60;
 
 //           if (reason === 'break') {
 //             breakMinutes += diffMinutes;
@@ -413,11 +535,10 @@ app.get("/employee_working_hours", async (req, res) => {
 //     res.status(500).send("Internal Server Error");
 //   }
 // });
-//Individual Employee Monthly Attendnace
 app.post('/employee_working_hours', async (req, res) => {
   const { name, date } = req.body;
   const user = req.session.user;
-  
+
   // Find the user ID based on the provided name
   let userId;
   try {
@@ -426,12 +547,12 @@ app.post('/employee_working_hours', async (req, res) => {
     `;
     const userValues = [`%${name.trim()}%`];
     const userResult = await pool.query(userQuery, userValues);
-    
+
     if (userResult.rows.length === 0) {
       res.status(404).send("User not found.");
       return;
     }
-    
+
     userId = userResult.rows[0].id;
   } catch (error) {
     console.error("Error finding user ID:", error);
@@ -453,11 +574,7 @@ app.post('/employee_working_hours', async (req, res) => {
       userId
     ];
 
-    console.log("Query:", query);
-    console.log("Values:", values);
-
     const result = await pool.query(query, values);
-    console.log("Query Result:", result.rows);
 
     if (result.rows.length === 0) {
       res.status(404).send("No records found for the specified date.");
@@ -496,17 +613,12 @@ app.post('/employee_working_hours', async (req, res) => {
           const diffMs = nextCheckInDateTime - checkOutDateTime;
           const diffMinutes = diffMs / 1000 / 60;
 
-          console.log(`Reason: "${reason}", Diff Minutes: ${diffMinutes}`);
-
           if (reason === 'break') {
             breakMinutes += diffMinutes;
-            console.log("BREAK");
           } else if (reason.includes('office')) { // Check if reason contains "office"
             officeWorkMinutes += diffMinutes;
-            console.log("OFFICE WORK");
           } else {
             otherMinutes += diffMinutes;
-            console.log("OTHER");
           }
         }
       } else if (checkOutTime && i === result.rows.length - 1) {
@@ -518,13 +630,10 @@ app.post('/employee_working_hours', async (req, res) => {
 
           if (reason === 'break') {
             breakMinutes += diffMinutes;
-            console.log("BREAK");
           } else if (reason.includes('office')) { // Check if reason contains "office"
             officeWorkMinutes += diffMinutes;
-            console.log("OFFICE WORK");
           } else {
             otherMinutes += diffMinutes;
-            console.log("OTHER");
           }
         }
       }
@@ -559,6 +668,8 @@ app.post('/employee_working_hours', async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
+
+
 
 app.get("/employee_monthly_report", async (req, res) => {
   user = req.session.user;
@@ -2067,6 +2178,7 @@ app.get("/daily_report", async (req, res) => {
 app.post('/daily_report', async (req, res) => {
   const user = req.session.user;
   const { name, date } = req.body;
+  console.log("Date:", date);
   let day='2024-04-16'
   async function generateUserReportByNameAndMonth(name, year, month) {
     try {
