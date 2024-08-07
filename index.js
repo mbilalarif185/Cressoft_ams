@@ -1217,7 +1217,6 @@ app.get("/monthly_working_hours", async (req, res) => {
     res.redirect("/");
   }
 });
-
 // app.post('/monthly_working_hours', async (req, res) => {
 //   const { name, year, month } = req.body;
 //   const user = req.session.user;
@@ -1311,6 +1310,11 @@ app.get("/monthly_working_hours", async (req, res) => {
 //               const diffMs = checkOutDateTime - checkInDateTime;
 //               const diffMinutes = diffMs / 1000 / 60;
 
+//               totalMinutes += diffMinutes;
+//             } else if (i === result.rows.length - 1) {
+//               // If this is the last check-in and there's no subsequent check-out, count time until shift end
+//               const diffMs = shiftEndTime - checkInDateTime;
+//               const diffMinutes = diffMs / 1000 / 60;
 //               totalMinutes += diffMinutes;
 //             }
 //           }
@@ -1471,18 +1475,12 @@ app.post('/monthly_working_hours', async (req, res) => {
       const query = `
         SELECT name, check_in_time, check_out_time, reason, date
         FROM record
-        WHERE (
-          lower(name) LIKE lower($1) OR
-          lower(name) LIKE lower($2) OR
-          lower(name) LIKE lower($3)
-        )
-        AND date = $4 AND id = $5
+        WHERE lower(name) LIKE lower($1)
+        AND date = $2 AND id = $3
         ORDER BY check_in_time;
       `;
       const values = [
-        `%${name.split(' ')[0]}%`, // First part of the name
-        `%${name.split(' ')[1]}%`, // Middle part of the name
-        `%${name.split(' ')[2]}%`, // Last part of the name
+        `%${name.trim()}%`,
         date,
         userId
       ];
@@ -1904,6 +1902,12 @@ app.post('/daily_working_hours', async (req, res) => {
           const diffMinutes = diffMs / 1000 / 60;
 
           totalMinutes += diffMinutes;
+        } else if (i === result.rows.length - 1) {
+          // If this is the last check-in and there's no subsequent check-out, count time until shift end
+          const diffMs = shiftEndTime - checkInDateTime;
+          const diffMinutes = diffMs / 1000 / 60;
+
+          totalMinutes += diffMinutes;
         }
       }
 
@@ -1950,13 +1954,6 @@ app.post('/daily_working_hours', async (req, res) => {
       }
     }
 
-    // If there's no check-out after the last check-in, count time until shift end
-    if (lastCheckInTime) {
-      const diffMs = shiftEndTime - lastCheckInTime;
-      const diffMinutes = diffMs / 1000 / 60;
-      totalMinutes += diffMinutes;
-    }
-
     const totalHours = Math.floor(totalMinutes / 60);
     const totalMinutesRemainder = totalMinutes % 60;
 
@@ -1986,6 +1983,7 @@ app.post('/daily_working_hours', async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
+
 
 
 
