@@ -1,7 +1,87 @@
+//- html(lang="en")
+//-   head
+//-     meta(charset="utf-8")
+//-     meta(name="viewport", content="width=device-width, initial-scale=1.0")
+//-     link(rel='stylesheet', href='/invoice.css')
+//-     title Cressoft AMS Employee Attendance Report
+//-   body
+//-     include header1.pug
+//-     div.table-container
+//-       if reportData.length > 0
+//-         h2 #{reportData[0].name} Your Attendance Report for the month of #{monthname}, #{year}
+//-         table.table-bordered
+//-           thead
+//-             tr
+//-               th Name
+//-               th Check-in Time
+//-               th Check-out Time
+//-               th Date
+//-               th Reason
+//-               th Location
+//-           tbody
+//-             each record in reportData
+//-               tr
+//-                 td= record.name
+//-                 td= record.check_in_time
+//-                 td= record.check_out_time
+//-                 td= record.date
+//-                 td= record.reason
+//-                 td= record.location
+//-       else
+//-         p No data available for the selected criteria.
+//-       .button-container
+//-         button.downloadBtn(type="button") Download as PDF
+
+//-     // Script to handle PDF download
+//-     script(src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.js")
+//-     script.
+//-       document.addEventListener('DOMContentLoaded', function () {
+//-         const downloadButton = document.querySelector('.downloadBtn');
+
+//-         downloadButton.addEventListener('click', function () {
+//-           try {
+//-             const tableContainer = document.querySelector('.table-container');
+//-             const excludedElements = tableContainer.querySelectorAll('.button-container');
+//-             excludedElements.forEach(element => element.remove());
+
+//-             html2pdf().from(tableContainer).save();
+//-           } catch (error) {
+//-             console.error('Error generating PDF:', error);
+//-             alert('An error occurred while generating the PDF.');
+//-           }
+//-         });
+//-       });
 html(lang="en")
   head
     meta(charset="utf-8")
     meta(name="viewport", content="width=device-width, initial-scale=1.0")
+    style.
+      .table-container {
+        page-break-inside: avoid;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th, td {
+        border: 1px solid #ddd;
+        padding: 8px;
+      }
+      tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+      @media print {
+        thead {
+          display: table-header-group;
+        }
+        tbody {
+          display: table-row-group;
+        }
+        tr {
+          page-break-inside: avoid;
+        }
+      }
     link(rel='stylesheet', href='/invoice.css')
     title Cressoft AMS Employee Attendance Report
   body
@@ -44,7 +124,24 @@ html(lang="en")
             const excludedElements = tableContainer.querySelectorAll('.button-container');
             excludedElements.forEach(element => element.remove());
 
-            html2pdf().from(tableContainer).save();
+            const opt = {
+              margin: [0.5, 0.5, 0.5, 0.5],
+              filename: 'attendance_report.pdf',
+              image: { type: 'jpeg', quality: 0.98 },
+              html2canvas: { scale: 2, useCORS: true },
+              jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
+              pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+            };
+
+            html2pdf().set(opt).from(tableContainer).toPdf().get('pdf').then(function (pdf) {
+              const totalPages = pdf.internal.getNumberOfPages();
+
+              for (let i = 1; i <= totalPages; i++) {
+                pdf.setPage(i);
+                pdf.setFontSize(10);
+                pdf.text('Page ' + String(i) + ' of ' + String(totalPages), pdf.internal.pageSize.getWidth() - 20, pdf.internal.pageSize.getHeight() - 10);
+              }
+            }).save();
           } catch (error) {
             console.error('Error generating PDF:', error);
             alert('An error occurred while generating the PDF.');
